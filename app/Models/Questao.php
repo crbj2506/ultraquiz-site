@@ -18,7 +18,7 @@ class Questao extends Model
     public function rules($id){
         return [
             'pergunta' => 'required|unique:questoes,pergunta,'.$id.'|min:10',
-            'resposta' => 'required|min:5',
+            'resposta' => 'required|min:1',
             'fonte' => 'required|min:5',
         ];
     }
