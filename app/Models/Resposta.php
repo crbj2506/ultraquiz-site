@@ -15,7 +15,7 @@ class Resposta extends Model
     
     public function rules($id){
         return [
-            'alternativa' => 'required|min:5',
+            'alternativa' => 'required|min:1',
         ];
     }
     public function feedback(){
