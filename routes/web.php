@@ -13,12 +13,20 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [App\Http\Controllers\QuestaoController::class, 'principal'])
+    ->name('questao.principal');
+Route::post('/', [App\Http\Controllers\QuestaoController::class, 'verifica'])
+    ->name('questao.verifica');
 
-Auth::routes(['verify' => true, 'register' => false]);
+Auth::routes(['verify' => true, 'register' => true]);
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])
     ->name('home')
     ->middleware('verified');
+
+Route::resource('questao', 'App\Http\Controllers\QuestaoController')
+    ->middleware('verified');
+
+Route::post('resposta', [App\Http\Controllers\RespostaController::class, 'store'])
+->name('resposta.store')
+->middleware('verified');
