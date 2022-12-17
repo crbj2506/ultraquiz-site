@@ -3,12 +3,12 @@
 @section('content')
 <div class="container">
     <div class="row justify-content-center">
-        <div class="col-md-10">
+        <div class="col-md-12">
             <div class="card">
                 <div class="card-header">{{ __('Lista de Questões') }}</div>
 
                 <div class="card-body">
-                    <table class="table">
+                    <table class="table table-striped table-hover">
                         <thead>
                             <tr>
                                 <th scope="col">#</th>
@@ -25,7 +25,7 @@
                                     <th scope="row">{{$q['id']}}</th>
                                     <td>{{$q['pergunta']}}</td>
                                     <td>{{$q['resposta']}}</td>
-                                    <td>{{$q['fonte']}}</td>
+                                    <td><a href="{{$q['fonte']}}" target="_blank"> Fonte</a></td>
                                     <td><a href="{{ route('questao.show',['questao' => $q['id']])}}" class="btn btn-sm btn-primary" class="btn btn-sm btn-warning">Ver</a></td>
                                     <td><a href="{{ route('questao.edit',['questao' => $q['id']])}}" class="btn btn-sm btn-warning">Editar</a></td>
                                 </tr>

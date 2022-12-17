@@ -8,7 +8,7 @@
                 <div class="card-header">
                     <div class="container">
                         <div class="row">
-                            <div class="col-auto me-auto">
+                            <div class="col-auto me-auto fs-5 fw-bold">
                                 {{ __('Visualizando Questão') }}
                             </div>
                             <div class="col-auto">
@@ -21,42 +21,29 @@
 
                 <div class="card-body">
 
-                    <div class="row mb-3">
-                        <label for="pergunta" class="col-md-2 col-form-label text-md-end">{{ __('Pergunta') }}</label>
-
-                        <div class="col-md-9">
-                            <input id="pergunta" type="text" class="form-control" name="pergunta" value="{{ $questao->pergunta }}" disabled>
-                        </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text fw-bold">{{ __('Pergunta') }}</span>
+                        <input id="pergunta" type="text" class="form-control" name="pergunta" value="{{ $questao->pergunta }}" disabled>
                     </div>
 
-
-                    <div class="row mb-3">
-                        <label for="resposta" class="col-md-2 col-form-label text-md-end">{{ __('Resposta Correta') }}</label>
-
-                        <div class="col-md-9">
-                            <input id="resposta" type="text" class="form-control" name="resposta" value="{{ $questao->resposta }}" disabled>
-                        </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text fw-bold">{{ __('Resposta Correta') }}</span>
+                        <input id="resposta" type="text" class="form-control" name="resposta" value="{{ $questao->resposta }}" disabled>
                     </div>
 
-                    <div class="row mb-3">
-                        <label for="fonte" class="col-md-2 col-form-label text-md-end">{{ __('Fonte') }}</label>
-                        <div class="col-md-9">
-                            <input id="fonte" type="text" class="form-control" name="fonte" value="{{ $questao->fonte }}" disabled>
-
-                        </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text fw-bold">{{ __('Fonte') }}</span>
+                        <input id="fonte" type="text" class="form-control" name="fonte" value="{{ $questao->fonte }}" disabled>
                     </div>
+
                     <hr>
-                        Alternativas Incorretas
+                    <p class="fs-5 fw-bold">Alternativas Incorretas</p>    
                     @foreach ($questao->respostas as $key => $r)
-                    <div class="row mt-3 mb-3">
-                        <label for="alternativa_{{$key}}" class="col-md-2 col-form-label text-md-end">{{ __('Alternativa ')}}{{$key+1}}</label>
-                        <div class="col-md-9">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text fw-bold">{{ __('Alternativa') }} {{$key+1}}</span>
                             <input id="alternativa_{{$key}}" type="text" class="form-control" name="alternativa_{{$key}}" value="{{ $r['alternativa'] }}" disabled>
-
                         </div>
-                    </div>
-                    @endforeach
-                    
+                    @endforeach                   
                 </div>              
                 <div class="card-footer">
                     <a href="{{ route('questao.edit',['questao' => $questao->id])}}" class="btn btn-sm btn-primary">Editar</a>

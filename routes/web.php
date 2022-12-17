@@ -27,6 +27,13 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])
 Route::resource('questao', 'App\Http\Controllers\QuestaoController')
     ->middleware('verified');
 
+
 Route::post('resposta', [App\Http\Controllers\RespostaController::class, 'store'])
-->name('resposta.store')
-->middleware('verified');
+    ->name('resposta.store')
+    ->middleware('verified');
+Route::put('resposta/{resposta}', [App\Http\Controllers\RespostaController::class, 'update'])
+    ->name('resposta.update')
+    ->middleware('verified');
+Route::get('resposta/{resposta}/edit', [App\Http\Controllers\RespostaController::class, 'edit'])
+    ->name('resposta.edit')
+    ->middleware('verified');

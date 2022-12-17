@@ -84,10 +84,10 @@ class RespostaController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $request->validate($this->resposta->rules($id),$this->resposta->feedback());
         $resposta = $this->resposta->find($id);
         $resposta->update($request->all());
-        return redirect()->route('resposta.show', ['resposta' => $resposta->id]);
+        return redirect()->route('questao.show', ['questao' => $resposta->questao_id]);
     }
 
     /**
