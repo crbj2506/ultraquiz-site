@@ -84,6 +84,7 @@ class QuestaoController extends Controller
     public function update(Request $request, $id)
     {
         //
+        $request->validate($this->questao->rules($id),$this->questao->feedback());
         $questao = $this->questao->find($id);
         $questao->update($request->all());
         return redirect()->route('questao.show', ['questao' => $questao->id]);
