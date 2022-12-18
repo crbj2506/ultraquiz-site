@@ -27,6 +27,9 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])
 Route::resource('questao', 'App\Http\Controllers\QuestaoController')
     ->middleware('verified');
 
+Route::resource('permissao', 'App\Http\Controllers\PermissaoController')
+    ->middleware('verified');
+
 
 Route::post('resposta', [App\Http\Controllers\RespostaController::class, 'store'])
     ->name('resposta.store')
