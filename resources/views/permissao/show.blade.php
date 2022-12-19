@@ -9,7 +9,7 @@
                     <div class="container">
                         <div class="row">
                             <div class="col-auto me-auto fs-5 fw-bold">
-                                {{ __('Visualizando Questão') }}
+                                {{ __('Visualizando Permissão') }}
                             </div>
                             <div class="col-auto">
                                 <a href="{{ route('permissao.index')}}" class="btn btn-sm btn-link">Listar</a>
