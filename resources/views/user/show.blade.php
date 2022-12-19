@@ -40,6 +40,32 @@
                         <input id="created_at" type="text" class="form-control" name="created_at" value="{{ $user->created_at }}" disabled>
                     </div>
                 </div>
+                
+                <div class="card m-3">
+                    <div class="card-header">
+                        <div class="col-auto me-auto fs-5 fw-bold">
+                            {{ __('Permissões') }}
+                        </div>
+                    </div>
+                    <div class="border rounded p-2 m-3">
+                        @foreach ($permissoes as $key => $p)
+                                @php
+                                    $checked = '';
+                                @endphp
+                            @foreach($user->permissoes as $indice =>$pu)
+                                @if($pu->id == $p->id)
+                                    @php
+                                        $checked = 'checked';
+                                    @endphp
+                                @endif
+                            @endforeach
+                                <div class="form-check-inline form-switch">
+                                    <input class="form-check-input" type="checkbox" id="{{$p['id']}}" name="{{$p['id']}}" {{$checked}} disabled>
+                                    <label class="form-check-label fw-bold" for="{{$p['id']}}"> {{$p['permissao']}}</label>
+                                </div>
+                        @endforeach
+                    </div>
+                </div>
                 <div class="card-footer">
                     <a href="{{ route('user.edit',['user' => $user->id])}}" class="btn btn-sm btn-primary">Editar</a>
                 </div>

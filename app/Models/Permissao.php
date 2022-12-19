@@ -23,4 +23,8 @@ class Permissao extends Model
             'permissao.min' => 'O campo :attribute deve ter no mínimo 3 caracteres'
         ];
     }
+
+    public function users(){
+        return $this->belongsToMany('App\Models\User', 'permissoes_users');
+    }
 }

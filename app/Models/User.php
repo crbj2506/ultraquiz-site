@@ -64,4 +64,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'required' => 'O campo :attribute é obrigatório',
         ];
     }
+
+    public function permissoes(){
+        return $this->belongsToMany('App\Models\Permissao', 'permissoes_users');
+    }
 }

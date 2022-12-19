@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Permissao;
+use App\Models\PermissaoUser;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\RegistersUsers;
@@ -45,7 +47,8 @@ class UserController extends Controller
     public function create()
     {
         //
-        return view('user.create');
+        $permissoes = Permissao::get();
+        return view('user.create',[ 'permissoes' => $permissoes]);
     }
 
     /**
@@ -61,6 +64,15 @@ class UserController extends Controller
         $dados = $request->all('name','email','password');
         $dados['password'] = Hash::make($dados['password']);
         $user = $this->user->create($dados);
+        // Percorre as permissoes disponíveis e compara com o valor do check (on) do request
+        // ID nome do check correponde ao ID da permissão no Banco
+        $permissoes = Permissao::get();
+        foreach ($permissoes as $key => $p) {
+            if($request->all($p->id)[$p->id] == 'on'){
+                $permissao_user = ['user_id' => $user->id, 'permissao_id' => $p->id ];
+                PermissaoUser::create($permissao_user);
+            }
+        }
         return redirect()->route('user.show', ['user' => $user->id]);
     }
 
@@ -74,7 +86,8 @@ class UserController extends Controller
     {
         //
         $user = $this->user->find($id);
-        return view('user.show', ['user' => $user]);
+        $permissoes = Permissao::get();
+        return view('user.show', ['user' => $user, 'permissoes' => $permissoes]);
     }
 
     /**
@@ -86,7 +99,8 @@ class UserController extends Controller
     public function edit(User $user)
     {
         //
-        return view('user.edit', ['user' => $user]);
+        $permissoes = Permissao::get();
+        return view('user.edit', ['user' => $user, 'permissoes' => $permissoes]);
     }
 
     /**
@@ -102,6 +116,24 @@ class UserController extends Controller
         $request->validate($this->user->rules_update($id),$this->user->feedback());
         $user = $this->user->find($id);
         $user->update($request->all());
+        //Pega todas as permissões cadastradas no banco de dados
+        $permissoes = Permissao::get();
+        // Percorre a colection de objetos de permissões
+        foreach ($permissoes as $key => $p) {
+            //Busca a permissão do usuário no banco
+            $permissaoUser = PermissaoUser::where('user_id',$user->id)->where('permissao_id',$p->id)->get()->first();
+            // Se houve request e a permissão não existe no banco, cria. 
+            if($request->all($p->id)[$p->id] == 'on'){
+                if(!$permissaoUser){
+                    $permissao = ['user_id' => $user->id, 'permissao_id' => $p->id ];
+                    PermissaoUser::create($permissao);
+                }
+            }else{
+                if($permissaoUser){
+                    $permissaoUser->delete();
+                }
+            }
+        }
         return redirect()->route('user.show', ['user' => $user->id]);
     }
 
