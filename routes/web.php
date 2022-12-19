@@ -30,6 +30,9 @@ Route::resource('questao', 'App\Http\Controllers\QuestaoController')
 Route::resource('permissao', 'App\Http\Controllers\PermissaoController')
     ->middleware('verified');
 
+Route::resource('user', 'App\Http\Controllers\UserController')
+    ->middleware('verified');
+
 
 Route::post('resposta', [App\Http\Controllers\RespostaController::class, 'store'])
     ->name('resposta.store')
