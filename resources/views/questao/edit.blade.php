@@ -54,12 +54,11 @@
 
                     @foreach ($questao->respostas as $key => $r)
 
-            <div class="input-group mb-3">
-                <span class="input-group-text fw-bold" id="inputLabelAlternativa{{$key}}">{{ __('Alternativa ')}}{{$key+1}}</span>
-                <input id="alternativa_{{$key}}" type="text" class="form-control" name="alternativa_{{$key}}" value="{{ $r['alternativa'] }}" disabled>
-                <a class="btn btn-outline-success" type="link" href="{{ route('resposta.edit', ['resposta' => $r['id'] ]) }}" id="buttonEditar">Editar</a>
-            </div>
-        </form>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text fw-bold" id="inputLabelAlternativa{{$key}}">{{ __('Alternativa ')}}{{$key+1}}</span>
+                            <input id="alternativa_{{$key}}" type="text" class="form-control" name="alternativa_{{$key}}" value="{{ $r['alternativa'] }}" disabled>
+                            <a class="btn btn-outline-success" type="link" href="{{ route('resposta.edit', ['resposta' => $r['id'] ]) }}" id="buttonEditar">Editar</a>
+                        </div>
 
                     @endforeach
 
@@ -70,14 +69,13 @@
                         <div class="input-group mb-3">
                             <span class="input-group-text fw-bold" id="inputLabelAlternativa">Alternativa Incorreta</span>
                             <input id="alternativa" type="text" class="form-control  @error('alternativa') is-invalid @enderror" name="alternativa" value="{{ old('alternativa') }}" autocomplete="alternativa" autofocus>
-                            <button class="btn btn-outline-success" type="button" id="buttonInserir" form="formInsereAlternativa">Inserir</button>
+                            <button class="btn btn-outline-success" type="submit" id="buttonInserir" form="formInsereAlternativa">Inserir</button>
                             @error('alternativa')
                                 <span class="invalid-feedback" role="alert">
                                     <strong>{{ $message }}</strong>
                                 </span>
                             @enderror
                         </div>
-
                     </form>
                 </div>
                     <div class="card-footer">
