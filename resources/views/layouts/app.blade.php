@@ -49,48 +49,52 @@
                                 </li>
                             @endif
                         @else
-                            <li class="nav-item dropdown">
-                                <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                   {{ __('Questões') }}
-                                </a>
+                            @if(auth()->user()->permissoes->contains('permissao', '=', 'Supervisor') || auth()->user()->permissoes->contains('permissao', '=', 'Administrador'))
+                                <li class="nav-item dropdown">
+                                    <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
+                                    {{ __('Questões') }}
+                                    </a>
 
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <a class="dropdown-item" href="{{ route('questao.index') }}">
-                                        {{ __('Listar') }}
+                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                        <a class="dropdown-item" href="{{ route('questao.index') }}">
+                                            {{ __('Listar') }}
+                                        </a>
+                                        <a class="dropdown-item" href="{{ route('questao.create') }}">
+                                            {{ __('Adicionar') }}
+                                        </a>
+                                    </div>
+                                </li>
+                            @endif
+                            @if(auth()->user()->permissoes->contains('permissao', '=', 'Administrador'))
+                                <li class="nav-item dropdown">
+                                    <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
+                                    {{ __('Permissões') }}
                                     </a>
-                                    <a class="dropdown-item" href="{{ route('questao.create') }}">
-                                        {{ __('Adicionar') }}
-                                    </a>
-                                </div>
-                            </li>
-                            <li class="nav-item dropdown">
-                                <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                   {{ __('Permissões') }}
-                                </a>
 
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <a class="dropdown-item" href="{{ route('permissao.index') }}">
-                                        {{ __('Listar') }}
+                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                        <a class="dropdown-item" href="{{ route('permissao.index') }}">
+                                            {{ __('Listar') }}
+                                        </a>
+                                        <a class="dropdown-item" href="{{ route('permissao.create') }}">
+                                            {{ __('Adicionar') }}
+                                        </a>
+                                    </div>
+                                </li>
+                                <li class="nav-item dropdown">
+                                    <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
+                                    {{ __('Usuários') }}
                                     </a>
-                                    <a class="dropdown-item" href="{{ route('permissao.create') }}">
-                                        {{ __('Adicionar') }}
-                                    </a>
-                                </div>
-                            </li>
-                            <li class="nav-item dropdown">
-                                <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                   {{ __('Usuários') }}
-                                </a>
 
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <a class="dropdown-item" href="{{ route('user.index') }}">
-                                        {{ __('Listar') }}
-                                    </a>
-                                    <a class="dropdown-item" href="{{ route('user.create') }}">
-                                        {{ __('Adicionar') }}
-                                    </a>
-                                </div>
-                            </li>
+                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                        <a class="dropdown-item" href="{{ route('user.index') }}">
+                                            {{ __('Listar') }}
+                                        </a>
+                                        <a class="dropdown-item" href="{{ route('user.create') }}">
+                                            {{ __('Adicionar') }}
+                                        </a>
+                                    </div>
+                                </li>
+                            @endif
                             <li class="nav-item dropdown">
                                 <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
                                     {{ Auth::user()->name }}

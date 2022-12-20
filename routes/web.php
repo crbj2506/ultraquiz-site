@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+//use App\Http\Middleware\PermissaoMiddleware;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,26 +21,26 @@ Route::post('/', [App\Http\Controllers\QuestaoController::class, 'verifica'])
 
 Auth::routes(['verify' => true, 'register' => false]);
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])
+Route::middleware('verified', 'permissao:Jogador,Supervisor,Administrador')
     ->name('home')
-    ->middleware('verified');
+    ->get('/home', [App\Http\Controllers\HomeController::class, 'index']);
 
-Route::resource('questao', 'App\Http\Controllers\QuestaoController')
-    ->middleware('verified');
+Route::middleware('verified', 'permissao:,Supervisor,Administrador')
+    ->resource('questao', 'App\Http\Controllers\QuestaoController');
 
-Route::resource('permissao', 'App\Http\Controllers\PermissaoController')
-    ->middleware('verified');
+Route::middleware('verified', 'permissao:,,Administrador')
+    ->resource('permissao', 'App\Http\Controllers\PermissaoController');
 
-Route::resource('user', 'App\Http\Controllers\UserController')
-    ->middleware('verified');
+Route::middleware('verified', 'permissao:,,Administrador')
+->resource('user', 'App\Http\Controllers\UserController');
 
 
-Route::post('resposta', [App\Http\Controllers\RespostaController::class, 'store'])
+Route::middleware('verified', 'permissao:,Supervisor,Administrador')
     ->name('resposta.store')
-    ->middleware('verified');
-Route::put('resposta/{resposta}', [App\Http\Controllers\RespostaController::class, 'update'])
+    ->post('resposta', [App\Http\Controllers\RespostaController::class, 'store']);
+Route::middleware('verified', 'permissao:,Supervisor,Administrador')
     ->name('resposta.update')
-    ->middleware('verified');
-Route::get('resposta/{resposta}/edit', [App\Http\Controllers\RespostaController::class, 'edit'])
+    ->put('resposta/{resposta}', [App\Http\Controllers\RespostaController::class, 'update']);
+Route::middleware('verified', 'permissao:,Supervisor,Administrador')
     ->name('resposta.edit')
-    ->middleware('verified');
+    ->get('resposta/{resposta}/edit', [App\Http\Controllers\RespostaController::class, 'edit']);
