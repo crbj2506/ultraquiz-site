@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Estatistica;
 use App\Models\Questao;
 use App\Models\Resposta;
 use Illuminate\Database\Eloquent\Collection;
@@ -159,6 +160,14 @@ class QuestaoController extends Controller
             $respostas[4] = $respostaCorreta;
         }
         $questao->respostas = $respostas;
+
+        $resposta_id = null;
+        if($questao->getAttributes()['respAnt'] != '0'){
+            $resposta_id = $questao->getAttributes()['respAnt'];
+        }
+        
+        $estatistica = new Estatistica();
+        $estatistica->create( ['questao_id' => $questao->getAttributes()['id'], 'resposta_id' => $resposta_id ]);
 
         return view('principal.index',['questao' => $questao]);
     }
