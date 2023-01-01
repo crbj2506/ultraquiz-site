@@ -35,7 +35,9 @@
                     <div class="container">
                         <div class="row">
                             <div class="col-auto me-auto">
-                                <a href="{{$questao->fonte}}" target="_blank"> Fonte: jw.org</a>
+                                @if (isset($questao->respAnt))
+                                    <a href="{{$questao->fonte}}" target="_blank"> Fonte: jw.org</a>
+                                @endif
                             </div>
                             <div class="col-auto">
                                 @if (isset($questao->respAnt))
