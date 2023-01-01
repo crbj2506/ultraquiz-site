@@ -1,4 +1,4 @@
-@extends('layouts.principal')
+@extends('layouts.app')
 
 @section('content')
 <div class="container">
@@ -59,3 +59,4 @@
         </div>
     </div>
 </div>
+@endsection
