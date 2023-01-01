@@ -13,6 +13,10 @@
                         @php $letras = ['A','B','C','D','E'];
                         @endphp
                         @foreach ($questao->respostas as $key => $r)
+                            @php if($key == 5){
+                                break;
+                            };
+                            @endphp                            
                             <div class="input-group mb-3">
                                 <span class="input-group-text"><strong>{{$letras[$key]}}</strong></span>
                                 <input type="hidden" name="alternativa_{{$key}}" value="{{$r->id}}">

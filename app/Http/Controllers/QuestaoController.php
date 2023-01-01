@@ -111,15 +111,20 @@ class QuestaoController extends Controller
         while ($questao == null) {
             $id = rand(1,$this->questao->count());
             $questao = $this->questao->find($id);
+            //Descartar questões com menos de 4 alternativas 
+            if($questao->respostas->count() < 4){
+                $questao = null;
+            }
         }
         $respostaCorreta = new Resposta();
         $respostaCorreta->id = 0;
         $respostaCorreta->alternativa = $questao->resposta;
-
+        //Embaralha todas as alternativas possíveis e pega apenas 4
+        $questao->respostas = $questao->respostas->shuffle()->take(4);
+        //Insere a alternativa CORRETA
         $questao->respostas[] = $respostaCorreta;
+        //Embaralha as 5 alternativas 
         $questao->respostas = $questao->respostas->shuffle();
-
-        //dd($questao);
         return view('principal.index',['questao' => $questao]);
     }
     public function verifica(Request $request)
