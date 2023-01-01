@@ -176,4 +176,10 @@ class QuestaoController extends Controller
 
         return view('principal.index',['questao' => $questao]);
     }
+    public function estatistica(Request $request)
+    {
+        $estatisticas = Estatistica::orderBy('id', 'desc')->paginate(50);
+        //dd($estatisticas);
+        return view('principal.estatistica',['estatisticas' => $estatisticas]);
+    }
 }

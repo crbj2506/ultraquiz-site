@@ -12,4 +12,10 @@ class Estatistica extends Model
         'questao_id',
         'resposta_id',
     ];
+    public function questao(){
+        return $this->belongsTo('App\Models\Questao');
+    } 
+    public function resposta(){
+        return $this->belongsTo('App\Models\Resposta');
+    } 
 }

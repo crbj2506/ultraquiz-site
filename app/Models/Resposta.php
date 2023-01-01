@@ -24,6 +24,9 @@ class Resposta extends Model
         ];
     }
     public function pergunta(){
-        return $this->belongsTo('App\Models\Pergunta');
+        return $this->belongsTo('App\Models\Questao');
     } 
+    public function estatisticas(){
+        return $this->hasMany('App\Models\Estatisticas');
+    }
 }
