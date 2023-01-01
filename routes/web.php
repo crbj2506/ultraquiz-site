@@ -32,8 +32,7 @@ Route::middleware('verified', 'permissao:,,Administrador')
     ->resource('permissao', 'App\Http\Controllers\PermissaoController');
 
 Route::middleware('verified', 'permissao:,,Administrador')
-->resource('user', 'App\Http\Controllers\UserController');
-
+    ->resource('user', 'App\Http\Controllers\UserController');
 
 Route::middleware('verified', 'permissao:,Supervisor,Administrador')
     ->name('resposta.store')
@@ -44,3 +43,6 @@ Route::middleware('verified', 'permissao:,Supervisor,Administrador')
 Route::middleware('verified', 'permissao:,Supervisor,Administrador')
     ->name('resposta.edit')
     ->get('resposta/{resposta}/edit', [App\Http\Controllers\RespostaController::class, 'edit']);
+
+Route::middleware('verified','permissao:,Supervisor,Administrador')
+    ->get('estatistica', [App\Http\Controllers\QuestaoController::class, 'estatistica']);

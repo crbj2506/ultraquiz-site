@@ -34,4 +34,7 @@ class Questao extends Model
     public function respostas(){
         return $this->hasMany('App\Models\Resposta');
     }
+    public function estatisticas(){
+        return $this->hasMany('App\Models\Estatisticas');
+    }
 }
