@@ -107,12 +107,14 @@ class QuestaoController extends Controller
     public function principal()
     {
         //
+        // forma um ARRAY com as últimas perguntas feitas
+        $recentes = Estatistica::limit($this->questao->count() - ($this->questao->count() / 4))->orderBy('id', 'desc')->get()->pluck('questao_id')->all();
         $questao = null;
         while ($questao == null) {
             $id = rand(1,$this->questao->count());
             $questao = $this->questao->find($id);
-            //Descartar questões com menos de 4 alternativas 
-            if($questao->respostas->count() < 4){
+            //Descartar questões recentes e com menos de 4 alternativas 
+            if($questao->respostas->count() < 4 || (in_array($id, $recentes))){
                 $questao = null;
             }
         }
