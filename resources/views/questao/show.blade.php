@@ -35,6 +35,18 @@
                         <span class="input-group-text fw-bold">{{ __('Fonte') }}</span>
                         <input id="fonte" type="text" class="form-control" name="fonte" value="{{ $questao->fonte }}" disabled>
                     </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text fw-bold">{{ __('Respondida') }}</span>
+                        <input id="fonte" type="text" class="text-end form-control" name="fonte" value="{{ $questao->estatisticas->pluck('resposta_id')->count() }}" disabled>
+                    </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text fw-bold">{{ __('Acertos') }}</span>
+                        <input id="fonte" type="text" class="text-end form-control" name="fonte" value="{{ $questao->estatisticas->where('resposta_id', null)->count() }}" disabled>
+                    </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text fw-bold">{{ __('Erros') }}</span>
+                        <input id="fonte" type="text" class="text-end form-control" name="fonte" value="{{ $questao->estatisticas->where('resposta_id', '!=' , null)->count() }}" disabled>
+                    </div>
 
                     <hr>
                     <p class="fs-5 fw-bold">Alternativas Incorretas</p>    
@@ -42,6 +54,7 @@
                         <div class="input-group mb-3">
                             <span class="input-group-text fw-bold">{{ __('Alternativa') }} {{$key+1}}</span>
                             <input id="alternativa_{{$key}}" type="text" class="form-control" name="alternativa_{{$key}}" value="{{ $r['alternativa'] }}" disabled>
+                            <span class="input-group-text"> {{$r->estatisticas->count()}}</span>
                         </div>
                     @endforeach                   
                 </div>              
