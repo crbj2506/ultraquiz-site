@@ -45,9 +45,9 @@
                             </div>
                             <div class="col-auto">
                                 @if (isset($questao->respAnt))
-                                    <a href="{{ route('questao.principal') }}" class="btn btn-sm btn-primary">Próxima</a>
+                                    <a href="{{ route('questao.principal') }}" class="btn btn-sm btn-outline-primary">Próxima</a>
                                 @else
-                                    <button type="submit" class="btn btn-sm btn-success" form="formQuestao">
+                                    <button type="submit" class="btn btn-sm btn-outline-success" form="formQuestao">
                                         {{ __('Responder') }}
                                     </button>
                                 @endif

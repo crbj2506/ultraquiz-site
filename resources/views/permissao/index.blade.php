@@ -22,8 +22,8 @@
                                 <tr>
                                     <th scope="row">{{$p['id']}}</th>
                                     <td>{{$p['permissao']}}</td>
-                                    <td><a href="{{ route('permissao.show',['permissao' => $p['id']])}}" class="btn btn-sm btn-primary" class="btn btn-sm btn-warning">Ver</a></td>
-                                    <td><a href="{{ route('permissao.edit',['permissao' => $p['id']])}}" class="btn btn-sm btn-warning">Editar</a></td>
+                                    <td><a href="{{ route('permissao.show',['permissao' => $p['id']])}}" class="btn btn-sm btn-outline-primary" class="btn btn-sm btn-outline-warning">Ver</a></td>
+                                    <td><a href="{{ route('permissao.edit',['permissao' => $p['id']])}}" class="btn btn-sm btn-outline-warning">Editar</a></td>
                                 </tr>
                             @endforeach
                         </tbody>
