@@ -28,8 +28,8 @@
                                     <td>{{$p['email']}}</td>
                                     <td>{{$p['email_verified_at']}}</td>
                                     <td>{{$p['created_at']}}</td>
-                                    <td><a href="{{ route('user.show',['user' => $p['id']])}}" class="btn btn-sm btn-primary" class="btn btn-sm btn-warning">Ver</a></td>
-                                    <td><a href="{{ route('user.edit',['user' => $p['id']])}}" class="btn btn-sm btn-warning">Editar</a></td>
+                                    <td><a href="{{ route('user.show',['user' => $p['id']])}}" class="btn btn-sm btn-outline-primary" class="btn btn-sm btn-outline-warning">Ver</a></td>
+                                    <td><a href="{{ route('user.edit',['user' => $p['id']])}}" class="btn btn-sm btn-outline-warning">Editar</a></td>
                                 </tr>
                             @endforeach
                         </tbody>

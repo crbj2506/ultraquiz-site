@@ -67,7 +67,7 @@
                     </div>
                 </div>
                 <div class="card-footer">
-                    <a href="{{ route('user.edit',['user' => $user->id])}}" class="btn btn-sm btn-primary">Editar</a>
+                    <a href="{{ route('user.edit',['user' => $user->id])}}" class="btn btn-sm btn-outline-primary">Editar</a>
                 </div>
             </div>
         </div>

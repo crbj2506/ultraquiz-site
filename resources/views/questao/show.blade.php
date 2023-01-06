@@ -46,7 +46,7 @@
                     @endforeach                   
                 </div>              
                 <div class="card-footer">
-                    <a href="{{ route('questao.edit',['questao' => $questao->id])}}" class="btn btn-sm btn-primary">Editar</a>
+                    <a href="{{ route('questao.edit',['questao' => $questao->id])}}" class="btn btn-sm btn-outline-primary">Editar</a>
                 </div>
             </div>
         </div>

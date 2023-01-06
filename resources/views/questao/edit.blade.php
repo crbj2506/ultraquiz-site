@@ -42,10 +42,10 @@
                     </form>
                 </div>
                 <div class="card-footer">
-                    <button type="submit" class="btn btn-sm btn-success" form="formUpdate">
+                    <button type="submit" class="btn btn-sm btn-outline-success" form="formUpdate">
                         {{ __('Salvar') }}
                     </button>
-                    <a href="{{ route('questao.show', ['questao' => $questao->id]) }}" class="btn btn-sm btn-warning mx-3">Cancelar</a>
+                    <a href="{{ route('questao.show', ['questao' => $questao->id]) }}" class="btn btn-sm btn-outline-warning mx-3">Cancelar</a>
                 </div>
             </div>
             <div class="card mt-4">

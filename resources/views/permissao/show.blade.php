@@ -26,7 +26,7 @@
                     </div>
                 </div>
                 <div class="card-footer">
-                    <a href="{{ route('permissao.edit',['permissao' => $permissao->id])}}" class="btn btn-sm btn-primary">Editar</a>
+                    <a href="{{ route('permissao.edit',['permissao' => $permissao->id])}}" class="btn btn-sm btn-outline-primary">Editar</a>
                 </div>
             </div>
         </div>

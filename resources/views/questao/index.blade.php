@@ -26,8 +26,8 @@
                                     <td>{{$q['pergunta']}}</td>
                                     <td>{{$q['resposta']}}</td>
                                     <td><a href="{{$q['fonte']}}" target="_blank"> Fonte</a></td>
-                                    <td><a href="{{ route('questao.show',['questao' => $q['id']])}}" class="btn btn-sm btn-primary" class="btn btn-sm btn-warning">Ver</a></td>
-                                    <td><a href="{{ route('questao.edit',['questao' => $q['id']])}}" class="btn btn-sm btn-warning">Editar</a></td>
+                                    <td><a href="{{ route('questao.show',['questao' => $q['id']])}}" class="btn btn-sm btn-outline-primary" class="btn btn-sm btn-outline-warning">Ver</a></td>
+                                    <td><a href="{{ route('questao.edit',['questao' => $q['id']])}}" class="btn btn-sm btn-outline-warning">Editar</a></td>
                                 </tr>
                             @endforeach
                         </tbody>
