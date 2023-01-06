@@ -27,6 +27,6 @@ class Resposta extends Model
         return $this->belongsTo('App\Models\Questao');
     } 
     public function estatisticas(){
-        return $this->hasMany('App\Models\Estatisticas');
+        return $this->hasMany('App\Models\Estatistica');
     }
 }
