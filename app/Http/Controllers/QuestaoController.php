@@ -60,7 +60,9 @@ class QuestaoController extends Controller
     {
         //
         $questao = $this->questao->find($id);
-        return view('questao.show', ['questao' => $questao]);
+        $idQuestaoAnterior = $this->questao->where('id', '<', $id)->max('id');
+        $idQuestaoPosterior = $this->questao->where('id', '>', $id)->min('id');
+        return view('questao.show', ['questao' => $questao, 'idQuestaoAnterior' => $idQuestaoAnterior, 'idQuestaoPosterior' => $idQuestaoPosterior]);
     }
 
     /**
