@@ -58,8 +58,16 @@
                         </div>
                     @endforeach                   
                 </div>              
-                <div class="card-footer">
-                    <a href="{{ route('questao.edit',['questao' => $questao->id])}}" class="btn btn-sm btn-outline-primary">Editar</a>
+                <div class="card-footer container">
+                    <div class="row">
+                        <div class="col">
+                            <a href="{{ route('questao.edit',['questao' => $questao->id])}}" class="btn btn-sm btn-outline-primary">Editar</a>
+                        </div>
+                        <div class="col text-end">
+                            <a href="{{ $idQuestaoAnterior ? route('questao.show',['questao' => $idQuestaoAnterior]) : '' }}" class="btn btn-sm btn-outline-secondary @if(!$idQuestaoAnterior) disabled @endif me-2">Anterior</a>
+                            <a href="{{ $idQuestaoPosterior ? route('questao.show',['questao' => $idQuestaoPosterior]) : '' }}" class="btn btn-sm btn-outline-secondary @if(!$idQuestaoPosterior) disabled @endif me-2">Posterior</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
