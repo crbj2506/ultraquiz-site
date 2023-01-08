@@ -41,12 +41,20 @@
                         </div>
                     </form>
                 </div>
-                <div class="card-footer">
-                    <button type="submit" class="btn btn-sm btn-outline-success" form="formUpdate">
-                        {{ __('Salvar') }}
-                    </button>
-                    <a href="{{ route('questao.show', ['questao' => $questao->id]) }}" class="btn btn-sm btn-outline-warning mx-3">Cancelar</a>
-                </div>
+                <div class="card-footer container">
+                    <div class="row">
+                        <div class="col">
+                            <button type="submit" class="btn btn-sm btn-outline-success" form="formUpdate">
+                                {{ __('Salvar') }}
+                            </button>
+                            <a href="{{ route('questao.show', ['questao' => $questao->id]) }}" class="btn btn-sm btn-outline-warning mx-3">Cancelar</a>
+                        </div>
+                        <div class="col text-end">
+                            <a href="{{ $questaoAnterior ? route('questao.edit',['questao' => $questaoAnterior]) : '' }}" class="btn btn-sm btn-outline-secondary @if(!$questaoAnterior) disabled @endif me-2">Anterior</a>
+                            <a href="{{ $questaoPosterior ? route('questao.edit',['questao' => $questaoPosterior]) : '' }}" class="btn btn-sm btn-outline-secondary @if(!$questaoPosterior) disabled @endif me-2">Posterior</a>
+                        </div>
+                    </div>
+                </div>           
             </div>
             <div class="card mt-4">
                 <div class="card-header fs-5 fw-bold">{{ __('Alternativas Incorretas da Questão') }}</div>
