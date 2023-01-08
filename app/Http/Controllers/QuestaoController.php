@@ -74,7 +74,11 @@ class QuestaoController extends Controller
     public function edit(Questao $questao)
     {
         //
-        return view('questao.edit', ['questao' => $questao]);
+        //$QuestaoAnterior = $this->questao->where('id', '<', $questao->id)->max('id')->get();
+        //$QuestaoPosterior = $this->questao->where('id', '>', $questao->id)->min('id')->get();
+        $questaoAnterior = $this->questao->where('id', '<', $questao->id)->get()->last();
+        $questaoPosterior = $this->questao->where('id', '>', $questao->id)->get()->first();
+        return view('questao.edit', ['questao' => $questao, 'questaoAnterior' => $questaoAnterior, 'questaoPosterior' => $questaoPosterior]);
     }
 
     /**
