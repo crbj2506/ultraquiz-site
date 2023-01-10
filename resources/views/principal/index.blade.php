@@ -35,12 +35,17 @@
                         @endforeach
                     </form>
                 </div>
-                <div class="card-footer">
+                <div class="card-footer px-0">
                     <div class="container">
-                        <div class="row">
+                        <div class="row align-items-end">
                             <div class="col-auto me-auto">
                                 @if (isset($questao->respAnt))
                                     <a href="{{$questao->fonte}}" target="_blank"> Fonte: jw.org</a>
+                                @else
+                                    <span class="fw-bold"> {{--a ? b : (c ? d : e)--}}
+                                        Taxa de Acerto: <span class="{{ $questao->estatisticas->pluck('resposta_id')->count() == 0 ? 'text-danger' : ($questao->estatisticas->where('resposta_id', null)->count() / $questao->estatisticas->pluck('resposta_id')->count() * 100 < 33.3 ? 'text-danger' : ($questao->estatisticas->where('resposta_id', null)->count() / $questao->estatisticas->pluck('resposta_id')->count() * 100 > 66.63 ? 'text-success' : 'text-warning'))}}">{{ $questao->estatisticas->pluck('resposta_id')->count() == 0 ? '0,00%' : number_format($questao->estatisticas->where('resposta_id', null)->count() / $questao->estatisticas->pluck('resposta_id')->count() * 100, 2, '.', '') . '%' }}</span>
+                                        de <span class="text-primary">{{$questao->estatisticas->pluck('resposta_id')->count() }}</span> tentativas
+                                    </span>
                                 @endif
                             </div>
                             <div class="col-auto">
