@@ -37,4 +37,17 @@ class Questao extends Model
     public function estatisticas(){
         return $this->hasMany('App\Models\Estatistica');
     }
+
+    public function taxaAcerto(){
+        $vezesAcerto = $this->estatisticas->where('resposta_id', null)->count();
+        $vezesRespondida = $this->vezesRespondida();
+        if($vezesRespondida > 0){ //Evita divisão por 0 (zero)
+            return $vezesAcerto / $vezesRespondida * 100;
+        }else{
+            return 0;
+        }
+    }
+    public function vezesRespondida(){
+        return $this->estatisticas->pluck('resposta_id')->count();
+    }
 }
