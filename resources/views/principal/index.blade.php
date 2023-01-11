@@ -42,9 +42,9 @@
                                 @if (isset($questao->respAnt))
                                     <a href="{{$questao->fonte}}" target="_blank"> Fonte: jw.org</a>
                                 @else
-                                    <span class="fw-bold"> {{--a ? b : (c ? d : e)--}}
-                                        Taxa de Acerto: <span class="{{ $questao->estatisticas->pluck('resposta_id')->count() == 0 ? 'text-danger' : ($questao->estatisticas->where('resposta_id', null)->count() / $questao->estatisticas->pluck('resposta_id')->count() * 100 < 33.3 ? 'text-danger' : ($questao->estatisticas->where('resposta_id', null)->count() / $questao->estatisticas->pluck('resposta_id')->count() * 100 > 66.63 ? 'text-success' : 'text-warning'))}}">{{ $questao->estatisticas->pluck('resposta_id')->count() == 0 ? '0,00%' : number_format($questao->estatisticas->where('resposta_id', null)->count() / $questao->estatisticas->pluck('resposta_id')->count() * 100, 2, '.', '') . '%' }}</span>
-                                        de <span class="text-primary">{{$questao->estatisticas->pluck('resposta_id')->count() }}</span> tentativas
+                                    <span class="fw-bold">
+                                        Taxa de Acerto: <span class="{{ $questao->taxaAcerto() < 33.3 ? 'text-danger' : ($questao->taxaAcerto() > 66.63 ? 'text-success' : 'text-warning')}}">{{ number_format( $questao->taxaAcerto(), 2, '.', '') . '%' }}</span>
+                                        de <span class="text-primary">{{$questao->vezesRespondida() }}</span> tentativas
                                     </span>
                                 @endif
                             </div>
