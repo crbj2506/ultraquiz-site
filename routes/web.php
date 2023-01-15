@@ -25,6 +25,11 @@ Route::middleware('verified', 'permissao:Jogador,Supervisor,Administrador')
     ->name('home')
     ->get('/home', [App\Http\Controllers\HomeController::class, 'index']);
 
+Route::name('partida.index')
+    ->get('/partida/{questao?}', [App\Http\Controllers\PartidaController::class, 'index']);
+Route::name('partida.index')
+    ->post('/partida/{questao?}', [App\Http\Controllers\PartidaController::class, 'index']);
+    
 Route::middleware('verified', 'permissao:,Supervisor,Administrador')
     ->resource('questao', 'App\Http\Controllers\QuestaoController');
 
