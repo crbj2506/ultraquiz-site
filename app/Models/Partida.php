@@ -6,6 +6,7 @@ use App\Models\Questao;
 use App\Models\Resposta;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\App;
 
 class Partida extends Model
 {
@@ -13,8 +14,15 @@ class Partida extends Model
 
     public function criar(){
 
-        //Busca 5 Questões aleatórias
-        $this->questoes = Questao::all()->shuffle()->take(10);
+        // Define número de questões diferentes para ambiente de desenvolvimento e produção
+        if(App::isLocal()){
+            $numeroQuestoes = 5;
+        }else{
+            $numeroQuestoes = 10;
+        }
+        //Busca Questões aleatórias
+        $this->questoes = Questao::all()->shuffle()->take($numeroQuestoes);
+
 
         //Percorre as questões e monta as alternativas
         foreach ($this->questoes as $indice => $questao) {
