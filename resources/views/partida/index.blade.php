@@ -84,7 +84,7 @@
                 <div class="card-footer container-fluid d-flex justify-content-center px-0">
                     <div class="row container px-0">
                         <div class="col-1">
-                            <a href="{{ $qAnt ? route('partida.index',['questao' => $qAnt]) : '' }}" class="btn btn-outline-secondary @if(!$qAnt) disabled @endif">
+                            <a href="{{ $partida->qAnt ? route('partida.index',['questao' => $partida->qAnt]) : '' }}" class="btn btn-outline-secondary @if(!$partida->qAnt) disabled @endif">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-caret-left" viewBox="0 0 16 16">
                                     <path d="M10 12.796V3.204L4.519 8 10 12.796zm-.659.753-5.48-4.796a1 1 0 0 1 0-1.506l5.48-4.796A1 1 0 0 1 11 3.204v9.592a1 1 0 0 1-1.659.753z"/>
                                 </svg>
@@ -116,7 +116,7 @@
                             </div>
                         </div>
                         <div class="col-1 text-end">
-                            <a href="{{ $qPost ? route('partida.index',['questao' => $qPost]) : '' }}" class="btn btn-outline-secondary @if(!$qPost) disabled @endif">
+                            <a href="{{ $partida->qPost ? route('partida.index',['questao' => $partida->qPost]) : '' }}" class="btn btn-outline-secondary @if(!$partida->qPost) disabled @endif">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-caret-right" viewBox="0 0 16 16">
                                     <path d="M6 12.796V3.204L11.481 8 6 12.796zm.659.753 5.48-4.796a1 1 0 0 0 0-1.506L6.66 2.451C6.011 1.885 5 2.345 5 3.204v9.592a1 1 0 0 0 1.659.753z"/>
                                 </svg>
