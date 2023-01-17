@@ -51,7 +51,14 @@
                             <div class="col-auto">
                                 @if (isset($partida->questoes[$partida->indice]->respAnt))
                                     {{--<a href="{{ route('questao.principal') }}" class="btn btn-sm btn-outline-primary">Próxima</a>--}}
-                                    <a href="{{ $qPost ? route('partida.index',['questao' => $qPost]) : '' }}" class="btn btn-outline-secondary @if(!$qPost) disabled @endif">Próxima</a>
+                                    @php($qProxima = null)
+                                    @foreach($partida->questoes as $key => $questao)
+                                        @if($questao->respAnt === null)
+                                            @php($qProxima = $questao->id)
+                                            @break
+                                        @endif
+                                    @endforeach
+                                    <a href="{{ $qProxima ? route('partida.index',['questao' => $qProxima]) : '' }}" class="btn btn-outline-secondary @if(!$qProxima) disabled @endif">Próxima</a>
                                     @if ($partida->questoes->pluck('respAnt')->doesntContain(null))
                                         <a href="{{ route('partida.index')}}" class="btn btn-outline-primary ms-2">Nova Partida
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-clipboard" viewBox="0 0 16 16">
@@ -77,31 +84,34 @@
                 <div class="card-footer container-fluid d-flex justify-content-center px-0">
                     <div class="row container px-0">
                         <div class="col-1">
-                                <a href="{{ $qAnt ? route('partida.index',['questao' => $qAnt]) : '' }}" class="btn btn-outline-secondary @if(!$qAnt) disabled @endif">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-caret-left" viewBox="0 0 16 16">
-                                        <path d="M10 12.796V3.204L4.519 8 10 12.796zm-.659.753-5.48-4.796a1 1 0 0 1 0-1.506l5.48-4.796A1 1 0 0 1 11 3.204v9.592a1 1 0 0 1-1.659.753z"/>
-                                    </svg>
-                                </a>
+                            <a href="{{ $qAnt ? route('partida.index',['questao' => $qAnt]) : '' }}" class="btn btn-outline-secondary @if(!$qAnt) disabled @endif">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-caret-left" viewBox="0 0 16 16">
+                                    <path d="M10 12.796V3.204L4.519 8 10 12.796zm-.659.753-5.48-4.796a1 1 0 0 1 0-1.506l5.48-4.796A1 1 0 0 1 11 3.204v9.592a1 1 0 0 1-1.659.753z"/>
+                                </svg>
+                            </a>
                         </div>
-                        <div class="col  container-fluid d-flex justify-content-center">
+                        <div class="col container-fluid d-flex justify-content-center">
                             <div class="row">
                                 @foreach($partida->questoes as $key => $questao)
-                                    <div class="col fw-bold text-center {{$partida->indice == $key ? 'bg-white border rounded' : ''}}">
-                                        <div class="{{$questao->respAnt === '0' ? 'text-success' : ($questao->respAnt === null ? 'text-primary' : 'text-danger')}}">{{ $key +1}}</div>
-                                        @if($questao->respAnt === '0')
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-circle-fill text-success" viewBox="0 0 16 16">
-                                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
-                                            </svg>
-                                        @elseif($questao->respAnt === null)
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-circle text-primary" viewBox="0 0 16 16">
-                                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                                            </svg>
-                                        @else
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-circle-fill text-danger" viewBox="0 0 16 16">
-                                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
-                                            </svg>
-                                        @endif
+                                    <div class="col m-1 p-0 {{$partida->indice == $key ? 'bg-white' : ''}}">
+                                        <a class="btn {{$questao->respAnt === '0' ? 'btn-outline-success' : ($questao->respAnt === null ? 'btn-outline-primary' : 'btn-outline-danger')}} @if($questao->respAnt !== null) disabled @endif" @if($questao->respAnt === null) href="{{route('partida.index',['questao' => $questao->id])}}" @endif>
+                                            <div>{{ $key +1}}</div>
+                                            @if($questao->respAnt === '0')
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-circle-fill text-success" viewBox="0 0 16 16">
+                                                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                                                </svg>
+                                            @elseif($questao->respAnt === null)
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-circle" viewBox="0 0 16 16">
+                                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                                </svg>
+                                            @else
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-circle-fill text-danger" viewBox="0 0 16 16">
+                                                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
+                                                </svg>
+                                            @endif
+                                        </a>
                                     </div>
+
                                 @endforeach
                             </div>
                         </div>
