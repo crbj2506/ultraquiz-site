@@ -5,8 +5,9 @@ namespace App\View\Components;
 use App\Models\Questao;
 use Illuminate\View\Component;
 
-class rodape extends Component
+class Rodape extends Component
 {
+    public $questoesCadastradas;
     /**
      * Create a new component instance.
      *
@@ -15,6 +16,7 @@ class rodape extends Component
     public function __construct()
     {
         //
+        $this->questoesCadastradas = Questao::count();
     }
 
     /**
@@ -24,7 +26,6 @@ class rodape extends Component
      */
     public function render()
     {
-        $questoesCadastradas = Questao::count();
-        return view('components.rodape', ['questoesCadastradas' => $questoesCadastradas]);
+        return view('components.rodape');
     }
 }
