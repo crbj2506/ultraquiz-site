@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Estatistica;
 use App\Models\Partida;
-use App\Models\Questao;
-use App\Models\Resposta;
 use Illuminate\Http\Request;
 
 class PartidaController extends Controller
