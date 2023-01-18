@@ -42,7 +42,7 @@
                                 @if (isset($partida->questoes[$partida->indice]->respAnt))
                                     <a href="{{$questao->fonte}}" target="_blank"> Fonte: jw.org</a>
                                 @else
-                                    <span class="fw-bold">
+                                    <span class="fw-bold d-none d-sm-block">
                                         Taxa de Acerto da Questão: <span class="{{ $questao->taxaAcerto() < 33.3 ? 'text-danger' : ($questao->taxaAcerto() > 66.63 ? 'text-success' : 'text-warning')}}">{{ number_format( $questao->taxaAcerto(), 2, '.', '') . '%' }}</span>
                                         de <span class="text-primary">{{$questao->vezesRespondida() }}</span> tentativas
                                     </span>
@@ -74,14 +74,14 @@
                         </div>
                     </div>
                 </div>
-                <div class="card-footer container-fluid d-flex justify-content-center px-0">
+                <div class="card-footer container-fluid d-none d-md-flex justify-content-center px-0">
                     <div class="row container px-0">
                         <div class="col-1">
                             <a href="{{ $partida->qAnt ? route('partida.index',['questao' => $partida->qAnt]) : '' }}" class="btn btn-outline-secondary @if(!$partida->qAnt) disabled @endif">
                                 <x-icon-caret-left width="30" height="30" class=""/>
                             </a>
                         </div>
-                        <div class="col container-fluid d-flex justify-content-center">
+                        <div class="col container-fluid d-none d-xl-flex justify-content-center">
                             <div class="row">
                                 @foreach($partida->questoes as $key => $questao)
                                     <div class="col m-1 p-0 {{$partida->indice == $key ? 'bg-white' : ''}}">

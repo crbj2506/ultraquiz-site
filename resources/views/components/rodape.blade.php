@@ -1,4 +1,4 @@
-<div class="fixed-bottom text-center bg-white container-fluid">
+<div class="fixed-bottom text-center bg-white container-fluid  d-none d-sm-block">
     <div class="row">
         <div class="col text-start border">
             <span class="text-muted">Divirta-se com as <strong>{{$questoesCadastradas}}</strong> questões cadastradas!</span>
