@@ -123,9 +123,7 @@
         </main>
 
         <footer class="footer">
-            <div class="fixed-bottom text-center bg-white">
-                <span class="text-muted">Desenvolvido por Custódio Junior.</span>
-            </div>
+            <x-rodape/>
         </footer>
     </div>
 </body>
