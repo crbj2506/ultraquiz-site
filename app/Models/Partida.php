@@ -14,15 +14,8 @@ class Partida extends Model
 
     public function criar(){
 
-        // Define número de questões diferentes para ambiente de desenvolvimento e produção
-        if(App::isLocal()){
-            $numeroQuestoes = 5;
-        }else{
-            $numeroQuestoes = 10;
-        }
         //Busca Questões aleatórias
-        $this->questoes = Questao::all()->shuffle()->take($numeroQuestoes);
-
+        $this->questoes = Questao::all()->shuffle()->take(env('APP_NUMERO_QUESTOES_PARTIDA'));
 
         //Percorre as questões e monta as alternativas
         foreach ($this->questoes as $indice => $questao) {
