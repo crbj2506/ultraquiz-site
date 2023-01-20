@@ -23,13 +23,13 @@
                         <tbody>
                             @foreach ($estatisticas as $key => $e)
                                 <tr>
-                                    <th scope="row">{{$e['id']}}</th>
-                                    <td>{{$e->resposta ? 'ERROU' : 'ACERTOU'}}</td>
-                                    <td>{{$e['questao_id']}}</td>
-                                    <td>{{$e->questao->pergunta}}</td>
-                                    <td>{{$e['resposta_id']}}</td>
-                                    <td>{{$e->resposta ? $e->resposta->alternativa : $e->questao->resposta}}</td>
-                                    <td>{{$e['created_at']}}</td>
+                                    <th class="py-0" scope="row">{{$e['id']}}</th>
+                                    <td class="py-0">{{$e->resposta ? 'ERROU' : 'ACERTOU'}}</td>
+                                    <td class="py-0">{{$e['questao_id']}}</td>
+                                    <td class="py-0">{{$e->questao->pergunta}}</td>
+                                    <td class="py-0">{{$e['resposta_id']}}</td>
+                                    <td class="py-0">{{$e->resposta ? $e->resposta->alternativa : $e->questao->resposta}}</td>
+                                    <td class="py-0">{{$e['created_at']}}</td>
                                 </tr>
                             @endforeach
                         </tbody>
