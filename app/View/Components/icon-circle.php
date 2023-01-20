@@ -4,7 +4,7 @@ namespace App\View\Components;
 
 use Illuminate\View\Component;
 
-class icon-circle extends Component
+class Icon-circle extends Component
 {
     /**
      * Create a new component instance.

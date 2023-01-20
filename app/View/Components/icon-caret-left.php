@@ -4,7 +4,7 @@ namespace App\View\Components;
 
 use Illuminate\View\Component;
 
-class icon-caret-left extends Component
+class Icon-caret-left extends Component
 {
     /**
      * Create a new component instance.
