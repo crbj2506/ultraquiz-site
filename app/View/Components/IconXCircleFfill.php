@@ -4,7 +4,7 @@ namespace App\View\Components;
 
 use Illuminate\View\Component;
 
-class Icon-caret-left extends Component
+class IconXCircleFfill extends Component
 {
     /**
      * Create a new component instance.
@@ -23,6 +23,6 @@ class Icon-caret-left extends Component
      */
     public function render()
     {
-        return view('components.icon-caret-left');
+        return view('components.icon-x-circle-fill');
     }
 }

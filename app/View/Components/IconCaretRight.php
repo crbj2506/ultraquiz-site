@@ -4,7 +4,7 @@ namespace App\View\Components;
 
 use Illuminate\View\Component;
 
-class Icon-clipboard-check extends Component
+class IconCaretRight extends Component
 {
     /**
      * Create a new component instance.
@@ -23,6 +23,6 @@ class Icon-clipboard-check extends Component
      */
     public function render()
     {
-        return view('components.icon-clipboard-check');
+        return view('components.icon-caret-right');
     }
 }

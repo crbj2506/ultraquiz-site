@@ -4,7 +4,7 @@ namespace App\View\Components;
 
 use Illuminate\View\Component;
 
-class Icon-circle extends Component
+class IconCheckCircleFill extends Component
 {
     /**
      * Create a new component instance.
@@ -23,6 +23,6 @@ class Icon-circle extends Component
      */
     public function render()
     {
-        return view('components.icon-circle');
+        return view('components.icon-check-circle-fill');
     }
 }
