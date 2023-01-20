@@ -4,7 +4,7 @@ namespace App\View\Components;
 
 use Illuminate\View\Component;
 
-class icon-clipboard extends Component
+class Icon-clipboard extends Component
 {
     /**
      * Create a new component instance.
