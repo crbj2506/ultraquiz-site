@@ -25,6 +25,13 @@ class LogAcesso
         }
         if(!empty($request->all())){
             $dados['request'] = $request->all();
+            
+            if(!empty($dados['request']['password'])){
+                unset($dados['request']['password']);
+            }
+            if(!empty($dados['request']['_token'])){
+                unset($dados['request']['_token']);
+            }
         }
         Log::create([
             'tipo' => 'REQUEST',
