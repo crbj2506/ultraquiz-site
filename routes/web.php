@@ -50,4 +50,9 @@ Route::middleware('verified', 'permissao:,Supervisor,Administrador')
     ->get('resposta/{resposta}/edit', [App\Http\Controllers\RespostaController::class, 'edit']);
 
 Route::middleware('verified','permissao:,Supervisor,Administrador')
+    ->name('estatistica.index')
     ->get('estatistica', [App\Http\Controllers\QuestaoController::class, 'estatistica']);
+
+Route::middleware('verified','permissao:,,Administrador')
+    ->get('/log', [App\Http\Controllers\LogController::class, 'index'])
+    ->name('log.index');
