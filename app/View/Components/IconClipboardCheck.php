@@ -4,7 +4,7 @@ namespace App\View\Components;
 
 use Illuminate\View\Component;
 
-class Icon-caret-right extends Component
+class IconClipboardCheck extends Component
 {
     /**
      * Create a new component instance.
@@ -23,6 +23,6 @@ class Icon-caret-right extends Component
      */
     public function render()
     {
-        return view('components.icon-caret-right');
+        return view('components.icon-clipboard-check');
     }
 }
