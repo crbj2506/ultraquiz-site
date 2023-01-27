@@ -6,14 +6,21 @@ use Illuminate\View\Component;
 
 class IconCaretRight extends Component
 {
+    public $width;
+    public $height;
+    public $class;
+
     /**
      * Create a new component instance.
      *
      * @return void
      */
-    public function __construct()
+    public function __construct($width = null, $height = null, $class = null)
     {
         //
+        $this->width = $width;
+        $this->height = $height;
+        $this->class = $class;
     }
 
     /**

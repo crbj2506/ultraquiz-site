@@ -67,7 +67,7 @@
                                 @else
                                     <button type="submit" class="btn btn-outline-success" form="formQuestao">
                                         {{ __('Responder ') }}
-                                        <x-icon-clipboard-check width="20" height="20" class=""/>
+                                        <x-icon-clipboard-check width="20" height="20" class=""></x-icon-clipboard-check>
                                     </button>
                                 @endif
                             </div>
@@ -78,7 +78,7 @@
                     <div class="row container px-0">
                         <div class="col-1">
                             <a href="{{ $partida->qAnt ? route('partida.index',['questao' => $partida->qAnt]) : '' }}" class="btn btn-outline-secondary @if(!$partida->qAnt) disabled @endif">
-                                <x-icon-caret-left width="30" height="30" class=""/>
+                                <x-icon-caret-left width="30" height="30" class=""></x-icon-caret-left>
                             </a>
                         </div>
                         <div class="col container-fluid d-none d-xl-flex justify-content-center">
@@ -88,11 +88,11 @@
                                         <a class="btn p-2 {{$questao->respAnt === '0' ? 'btn-outline-success' : ($questao->respAnt === null ? 'btn-outline-primary' : 'btn-outline-danger')}} @if($questao->respAnt !== null) disabled @endif" @if($questao->respAnt === null) href="{{route('partida.index',['questao' => $questao->id])}}" @endif>
                                             <div class="fw-bold">{{ $key +1}}</div>
                                             @if($questao->respAnt === '0')
-                                                <x-icon-check-circle-fill width="16" height="16" class="text-success"/>
+                                                <x-icon-check-circle-fill width="16" height="16" class="text-success"></x-icon-check-circle-fill>
                                             @elseif($questao->respAnt === null)
-                                                <x-icon-circle width="16" height="16" class=""/>
+                                                <x-icon-circle width="16" height="16" class=""></x-icon-circle>
                                             @else
-                                                <x-icon-x-circle-fill width="16" height="16" class="text-danger"/>
+                                                <x-icon-x-circle-fill width="16" height="16" class="text-danger"></x-icon-x-circle-fill>
                                             @endif
                                         </a>
                                     </div>
@@ -102,7 +102,7 @@
                         </div>
                         <div class="col-1 text-end">
                             <a href="{{ $partida->qPost ? route('partida.index',['questao' => $partida->qPost]) : '' }}" class="btn btn-outline-secondary @if(!$partida->qPost) disabled @endif">
-                                <x-icon-caret-right width="30" height="30" class=""/>
+                                <x-icon-caret-right width="30" height="30" class=""></x-icon-caret-right>
                             </a>
                         </div>
                     </div>
