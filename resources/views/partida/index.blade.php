@@ -74,37 +74,85 @@
                         </div>
                     </div>
                 </div>
-                <div class="card-footer container-fluid d-none d-md-flex justify-content-center px-0">
-                    <div class="row container px-0">
-                        <div class="col-1">
+                <div class="card-footer      d-flex">
+                <div class="container">
+                    <div class="row container align-items-center">
+                        <div class="col-1 d-none d-md-block text-center">
                             <a href="{{ $partida->qAnt ? route('partida.index',['questao' => $partida->qAnt]) : '' }}" class="btn btn-outline-secondary @if(!$partida->qAnt) disabled @endif">
-                                <x-icon-caret-left width="30" height="30" class=""></x-icon-caret-left>
+                                <x-icon-caret-left width="50" height="50" class=""></x-icon-caret-left>
                             </a>
                         </div>
-                        <div class="col container-fluid d-none d-xl-flex justify-content-center">
-                            <div class="row">
-                                @foreach($partida->questoes as $key => $questao)
-                                    <div class="col m-1 p-0 {{$partida->indice == $key ? 'bg-white' : ''}}">
-                                        <a class="btn p-2 {{$questao->respAnt === '0' ? 'btn-outline-success' : ($questao->respAnt === null ? 'btn-outline-primary' : 'btn-outline-danger')}} @if($questao->respAnt !== null) disabled @endif" @if($questao->respAnt === null) href="{{route('partida.index',['questao' => $questao->id])}}" @endif>
-                                            <div class="fw-bold">{{ $key +1}}</div>
-                                            @if($questao->respAnt === '0')
-                                                <x-icon-check-circle-fill width="16" height="16" class="text-success"></x-icon-check-circle-fill>
-                                            @elseif($questao->respAnt === null)
-                                                <x-icon-circle width="16" height="16" class=""></x-icon-circle>
-                                            @else
-                                                <x-icon-x-circle-fill width="16" height="16" class="text-danger"></x-icon-x-circle-fill>
-                                            @endif
-                                        </a>
-                                    </div>
 
-                                @endforeach
+
+                        @php($a = $b = $e =null)
+                        @foreach ($partida->questoes as $key => $questao)
+                            @if($questao->respAnt === '0')
+                                @php($a++)
+                            @elseif($questao->respAnt === null)
+                                @php($b++)
+                            @else
+                                @php($e++)
+                            @endif
+                        @endforeach
+                        <div class="col d-flex justify-content-center">
+                        <div class="row">
+                            <div class="col text-success border rounded border-success mx-2">
+                                <div class="text-center fw-bold fs-4">{{$a?$a:0}}</div>
+                                <div class="text-center fw-bold d-none d-md-block">
+                                    <div><x-icon-check-circle-fill width="25" height="25" class="text-success"></x-icon-check-circle-fill></div>
+                                    Acertos
+                                </div>
+                            </div>
+                            <div class="col text-danger border rounded border-danger mx-2">
+                                <div class="text-center fw-bold fs-4">{{$e?$e:0}}</div>
+                                <div class="text-center fw-bold d-none d-md-block">
+                                    <div><x-icon-x-circle-fill width="25" height="25" class="text-danger"></x-icon-x-circle-fill></div>
+                                    Erros
+                                </div>
+                            </div>
+                            <div class="col text-primary border rounded border-primary mx-2">
+                                <div class="text-center fw-bold fs-4">{{$b?$b:0}}</div>
+                                <div class="text-center fw-bold d-none d-md-block">
+                                    <div><x-icon-circle width="25" height="25" class=""></x-icon-circle></div>
+                                    Restam
+                                </div>
+                            </div>
+                            <div class="col rounded border rounded border-dark mx-2">
+                                <div class="text-center fw-bold fs-4">{{$a?$a/2:0}}</div>
+                                <div class="text-center fw-bold d-none d-md-block">
+                                    <div><x-icon-clipboard-check width="25" height="25" class=""></x-icon-clipboard-check></div>
+                                    Nota
+                                </div>
                             </div>
                         </div>
-                        <div class="col-1 text-end">
+                        </div>
+
+
+                        <div class="col-1 d-none d-md-block  text-center">
                             <a href="{{ $partida->qPost ? route('partida.index',['questao' => $partida->qPost]) : '' }}" class="btn btn-outline-secondary @if(!$partida->qPost) disabled @endif">
-                                <x-icon-caret-right width="30" height="30" class=""></x-icon-caret-right>
+                                <x-icon-caret-right width="50" height="50" class=""></x-icon-caret-right>
                             </a>
                         </div>
+                    </div>
+                </div>
+                </div>
+                <div class="card-footer container-fluid d-none d-lg-flex justify-content-center">
+                    <div class="row">
+                        @foreach($partida->questoes as $key => $questao)
+                            <div class="col m-1 p-0 {{$partida->indice == $key ? 'bg-white' : ''}}">
+                                <a class="btn p-2 {{$questao->respAnt === '0' ? 'btn-outline-success' : ($questao->respAnt === null ? 'btn-outline-primary' : 'btn-outline-danger')}} @if($questao->respAnt !== null) disabled @endif" @if($questao->respAnt === null) href="{{route('partida.index',['questao' => $questao->id])}}" @endif>
+                                    <div class="fw-bold">{{ $key +1}}</div>
+                                    @if($questao->respAnt === '0')
+                                        <x-icon-check-circle-fill width="16" height="16" class="text-success"></x-icon-check-circle-fill>
+                                    @elseif($questao->respAnt === null)
+                                        <x-icon-circle width="16" height="16" class=""></x-icon-circle>
+                                    @else
+                                        <x-icon-x-circle-fill width="16" height="16" class="text-danger"></x-icon-x-circle-fill>
+                                    @endif
+                                </a>
+                            </div>
+
+                        @endforeach
                     </div>
                 </div>
             </div>
