@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/q', [App\Http\Controllers\QuestaoController::class, 'principal'])
+Route::get('/', [App\Http\Controllers\QuestaoController::class, 'principal'])
     ->name('questao.principal');
-Route::post('/q', [App\Http\Controllers\QuestaoController::class, 'verifica'])
+Route::post('/', [App\Http\Controllers\QuestaoController::class, 'verifica'])
     ->name('questao.verifica');
 
 Auth::routes(['verify' => true, 'register' => false]);
@@ -26,9 +26,9 @@ Route::middleware('verified', 'permissao:Jogador,Supervisor,Administrador')
     ->get('/home', [App\Http\Controllers\HomeController::class, 'index']);
 
 Route::name('partida.index')
-    ->get('/{questao?}', [App\Http\Controllers\PartidaController::class, 'index']);
+    ->get('/partida/{questao?}', [App\Http\Controllers\PartidaController::class, 'index']);
 Route::name('partida.index')
-    ->post('/{questao?}', [App\Http\Controllers\PartidaController::class, 'index']);
+    ->post('/partida/{questao?}', [App\Http\Controllers\PartidaController::class, 'index']);
     
 Route::middleware('verified', 'permissao:,Supervisor,Administrador')
     ->resource('questao', 'App\Http\Controllers\QuestaoController');
