@@ -37,7 +37,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="card-header fw-bold fs-5">{{$questao->pergunta}} Tamanho 5</div>
+                <div class="card-header fw-bold fs-5">{{$questao->pergunta}}</div>
                 <div class="card-body">
                     <form method="POST" action="{{ route('partida.index', ['questao' => $questao->id]) }}" enctype="multipart/form-data" id="formQuestao">
                         @csrf
