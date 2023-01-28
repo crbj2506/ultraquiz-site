@@ -12,6 +12,19 @@ class Partida extends Model
 {
     use HasFactory;
 
+    public function atualizaPlacar(){
+        //Atualiza Placar
+        $this->a = $this->b = $this->e = null;
+        foreach ($this->questoes as $key => $q) {
+            if ($q->respAnt === '0') {
+                $this->a++;
+            } elseif ($q->respAnt === null) {
+                $this->b++;
+            } else {
+                $this->e++;
+            }
+        }
+    }
     public function criar(){
 
         //Busca Questões aleatórias
@@ -30,6 +43,9 @@ class Partida extends Model
             // Emparalha as alternativas
             $this->questoes[$indice]->respostas = $this->questoes[$indice]->respostas->shuffle();
         }
+
+        //Inicializa Placar
+        $this->atualizaPlacar();
     }
 
     public function defineQuestao($questao_id){
