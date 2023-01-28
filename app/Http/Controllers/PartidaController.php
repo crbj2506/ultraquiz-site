@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 
 class PartidaController extends Controller
 {
+    public $partida;
     public function __construct(Partida $partida){
         $this->partida = $partida;
     }
@@ -31,6 +32,9 @@ class PartidaController extends Controller
         if($request->all()){
             // Havendo request [POST] grava resposta dada na questao
             $resposta_id = $this->partida->questoes->find($request->questao)->respAnt = $request->all('resposta')['resposta'];
+
+            //Atualiza Placar
+            $this->partida->atualizaPlacar();
 
             // Armazena Estatística. Se resposta for 0 (correta), deve-se armazenar NULL por causa do relacionamento 
             if($resposta_id == 0){$resposta_id = null;}
