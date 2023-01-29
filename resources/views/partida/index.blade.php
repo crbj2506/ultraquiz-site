@@ -115,8 +115,8 @@
                         <div class="col text-center d-none d-xl-flex">
                             <!-- INÍCIO Painel das Questões -->
                             @foreach($partida->questoes as $key => $questao)
-                                <div class="col m-1 p-0 {{$partida->indice == $key ? 'bg-white' : ''}}">
-                                    <a class="btn p-2 {{$questao->respAnt === '0' ? 'btn-outline-success' : ($questao->respAnt === null ? 'btn-outline-primary' : 'btn-outline-danger')}} @if($questao->respAnt !== null) disabled @endif" @if($questao->respAnt === null) href="{{route('partida.index',['questao' => $questao->id])}}" @endif>
+                                <div class="col m-1 p-0">
+                                    <a class="btn p-2 {{$questao->respAnt === '0' ? 'btn-outline-success' : ($questao->respAnt === null ? 'btn-outline-primary' : 'btn-outline-danger')}} {{$partida->indice == $key ? ' bg-info text-white' : ''}}" @if($questao->respAnt === null) href="{{route('partida.index',['questao' => $questao->id])}}" @endif>
                                         <div class="fw-bold">{{ $key +1}}</div>
                                         @if($questao->respAnt === '0')
                                             <x-icon-check-circle-fill width="16" height="16" class="text-success"></x-icon-check-circle-fill>
