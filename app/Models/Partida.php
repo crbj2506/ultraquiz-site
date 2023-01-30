@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Questao;
 use App\Models\Resposta;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\App;
@@ -11,7 +12,6 @@ use Illuminate\Support\Facades\App;
 class Partida extends Model
 {
     use HasFactory;
-
     public function atualizaPlacar(){
         //Atualiza Placar
         $this->a = $this->b = $this->e = null;
@@ -26,9 +26,24 @@ class Partida extends Model
         }
     }
     public function criar(){
+        // forma um ARRAY com as últimas perguntas feitas (75%)
+        $this->questoes = new Collection();
+        $recentes = Estatistica::limit(Questao::count()* 0.75)->orderBy('id', 'desc')->get()->pluck('questao_id')->all();
 
-        //Busca Questões aleatórias
-        $this->questoes = Questao::all()->shuffle()->take(env('APP_NUMERO_QUESTOES_PARTIDA'));
+        // Sorteia as Questões da Partida
+        for ($i=0; $i < env('APP_NUMERO_QUESTOES_PARTIDA'); $i++) { 
+            $questao = null;
+            while ($questao == null) {
+                $id = rand(1,Questao::count());
+                $questao = Questao::find($id);
+
+                //Descartar questões recentes, com menos de 4 alternativas e que já tenham sido selecionadas para a partida
+                if($questao->respostas->count() < 4 || (in_array($id, $recentes) || in_array($id, $this->questoes->pluck('id')->all()))){
+                    $questao = null;
+                }
+            }
+            $this->questoes[] = $questao;
+        }
 
         //Percorre as questões e monta as alternativas
         foreach ($this->questoes as $indice => $questao) {

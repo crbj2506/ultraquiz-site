@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 
 class QuestaoController extends Controller
 {
+    public $questao;
+    
     public function __construct(Questao $questao){
         $this->questao = $questao;
     }
