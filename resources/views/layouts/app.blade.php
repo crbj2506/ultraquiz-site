@@ -37,6 +37,12 @@
                     <ul class="navbar-nav ms-auto">
                         <!-- Authentication Links -->
                         @guest
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('partida.index') }}">{{ __('Jogar Partida') }}</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('questao.principal') }}">{{ __('Responder Questões') }}</a>
+                                </li>
                             @if (Route::has('login'))
                                 <li class="nav-item">
                                     <a class="nav-link" href="{{ route('login') }}">{{ __('Login') }}</a>
