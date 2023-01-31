@@ -13,10 +13,10 @@ use Illuminate\Support\Facades\Route;
 | contains the "web" middleware group. Now create something great!
 |
 */
-Route::redirect('/', '/partida');
+//Route::redirect('/', '/partida');
 
-//Route::get('/', [App\Http\Controllers\QuestaoController::class, 'principal'])->name('questao.principal');
-//Route::post('/', [App\Http\Controllers\QuestaoController::class, 'verifica'])->name('questao.verifica');
+Route::get('/', [App\Http\Controllers\QuestaoController::class, 'principal'])->name('questao.principal');
+Route::post('/', [App\Http\Controllers\QuestaoController::class, 'verifica'])->name('questao.verifica');
 
 Auth::routes(['verify' => true, 'register' => false]);
 
