@@ -37,7 +37,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="card-header fw-bold fs-5">{{$questao->pergunta}}</div>
+                <div class="card-header fw-bold fs-4">{{$questao->pergunta}}</div>
                 <div class="card-body">
                     <form method="POST" action="{{ route('partida.index', ['questao' => $questao->id]) }}" enctype="multipart/form-data" id="formQuestao">
                         @csrf
@@ -50,10 +50,10 @@
                             };
                             @endphp                            
                             <div class="input-group mb-3">
-                                <span class="input-group-text fw-bold fs-5">{{$letras[$key]}}</span>
+                                <span class="input-group-text fw-bold fs-4">{{$letras[$key]}}</span>
                                 <input type="hidden" name="alternativa_{{$key}}" value="{{$r->id}}">
                                 <input type="text" 
-                                    class="form-control fs-5
+                                    class="form-control fs-4
                                     {{isset($questao->respAnt) && $r->id == 0 ? 'is-valid' : ''}}
                                     {{isset($questao->respAnt) && $questao->respAnt != 0 && $questao->respAnt == $r->id ? 'is-invalid' : ''}}
                                     " 
@@ -70,11 +70,11 @@
                 <div class="card-footer px-0">
                     <div class="container">
                         <div class="row align-items-end">
-                            <div class="col-auto me-auto">
+                            <div class="col-auto me-auto fs-4">
                                 @if (isset($partida->questoes[$partida->indice]->respAnt))
                                     <a href="{{$questao->fonte}}" target="_blank"> Fonte: jw.org</a>
                                 @else
-                                    <span class="fw-bold fs-5 d-none d-md-block">
+                                    <span class="fw-bold fs-4 d-none d-md-block">
                                         Taxa de Acerto da Questão: <span class="{{ $questao->taxaAcerto() < 33.3 ? 'text-danger' : ($questao->taxaAcerto() > 66.63 ? 'text-success' : 'text-warning')}}">{{ number_format( $questao->taxaAcerto(), 2, '.', '') . '%' }}</span>
                                         de <span class="text-primary">{{$questao->vezesRespondida() }}</span> tentativas
                                     </span>
@@ -89,14 +89,14 @@
                                             @break
                                         @endif
                                     @endforeach
-                                    <a href="{{ $qProxima ? route('partida.index',['questao' => $qProxima]) : '' }}" class="btn btn-outline-secondary @if(!$qProxima) disabled @endif">Próxima</a>
+                                    <a href="{{ $qProxima ? route('partida.index',['questao' => $qProxima]) : '' }}" class="btn btn-outline-secondary fs-4 @if(!$qProxima) disabled @endif">Próxima</a>
                                     @if ($partida->questoes->pluck('respAnt')->doesntContain(null))
-                                        <a href="{{ route('partida.index')}}" class="btn btn-outline-primary ms-2">Nova Partida
+                                        <a href="{{ route('partida.index')}}" class="btn btn-outline-primary ms-2 fs-4">Nova Partida
                                             <x-icon-clipboard width="20" height="20" class=""/>
                                         </a>
                                     @endif
                                 @else
-                                    <button type="submit" class="btn btn-outline-success fs-5" form="formQuestao">
+                                    <button type="submit" class="btn btn-outline-success fs-4" form="formQuestao">
                                         {{ __('Responder ') }}
                                         <x-icon-clipboard-check width="20" height="20" class=""></x-icon-clipboard-check>
                                     </button>
@@ -116,7 +116,7 @@
                             <!-- INÍCIO Painel das Questões -->
                             @foreach($partida->questoes as $key => $questao)
                                 <div class="col m-1 p-0">
-                                    <a class="btn p-2 {{$questao->respAnt === '0' ? 'btn-outline-success' : ($questao->respAnt === null ? 'btn-outline-primary' : 'btn-outline-danger')}} {{$partida->indice == $key ? ' bg-info text-white' : ''}}" @if($questao->respAnt === null) href="{{route('partida.index',['questao' => $questao->id])}}" @endif>
+                                    <a class="btn p-2 fs-5 {{$questao->respAnt === '0' ? 'btn-outline-success' : ($questao->respAnt === null ? 'btn-outline-primary' : 'btn-outline-danger')}} {{$partida->indice == $key ? ' bg-info text-white' : ''}}" @if($questao->respAnt === null) href="{{route('partida.index',['questao' => $questao->id])}}" @endif>
                                         <div class="fw-bold">{{ $key +1}}</div>
                                         @if($questao->respAnt === '0')
                                             <x-icon-check-circle-fill width="16" height="16" class="text-success"></x-icon-check-circle-fill>
