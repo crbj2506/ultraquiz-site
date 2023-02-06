@@ -31,15 +31,28 @@ class Partida extends Model
         $recentes = Estatistica::limit(Questao::count()* 0.75)->orderBy('id', 'desc')->get()->pluck('questao_id')->all();
 
         // Sorteia as Questões da Partida
-        for ($i=0; $i < env('APP_NUMERO_QUESTOES_PARTIDA'); $i++) { 
+        for ($i=0, $evitaLoop = 0; $i < env('APP_NUMERO_QUESTOES_PARTIDA'); $i++) { 
             $questao = null;
             while ($questao == null) {
                 $id = rand(1,Questao::count());
+
                 $questao = Questao::find($id);
+
+                    //dd($questao->taxaAcerto(),$questao->vezesRespondida());
 
                 //Descartar questões recentes, com menos de 4 alternativas e que já tenham sido selecionadas para a partida
                 if($questao->respostas->count() < 4 || (in_array($id, $recentes) || in_array($id, $this->questoes->pluck('id')->all()))){
                     $questao = null;
+                //Descarta questões mais difíceis para a primeira questão da partida
+                }elseif ( $i==0 && ($questao->taxaAcerto() < 75 || $questao->vezesRespondida() < 5) && $evitaLoop < 50 ) {
+                    $questao = null;
+                    $evitaLoop++;
+                }elseif ( $i==0 && ($questao->taxaAcerto() < 75 || $questao->vezesRespondida() < 4) && $evitaLoop < 150 ) {
+                    $questao = null;
+                    $evitaLoop++;
+                }elseif ( $i==0 && ($questao->taxaAcerto() < 75 || $questao->vezesRespondida() < 3) && $evitaLoop < 250 ) {
+                    $questao = null;
+                    $evitaLoop++;
                 }
             }
             $this->questoes[] = $questao;
