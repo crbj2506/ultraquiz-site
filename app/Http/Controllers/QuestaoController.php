@@ -18,7 +18,7 @@ class QuestaoController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Contracts\View\View
      */
     public function index()
     {
@@ -30,7 +30,7 @@ class QuestaoController extends Controller
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Contracts\View\View
      */
     public function create()
     {
@@ -56,7 +56,7 @@ class QuestaoController extends Controller
      * Display the specified resource.
      *
      * @param  Integer $id
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Contracts\View\View
      */
     public function show($id)
     {
@@ -71,13 +71,11 @@ class QuestaoController extends Controller
      * Show the form for editing the specified resource.
      *
      * @param  \App\Models\Questao  $questao
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Contracts\View\View
      */
     public function edit(Questao $questao)
     {
         //
-        //$QuestaoAnterior = $this->questao->where('id', '<', $questao->id)->max('id')->get();
-        //$QuestaoPosterior = $this->questao->where('id', '>', $questao->id)->min('id')->get();
         $questaoAnterior = $this->questao->where('id', '<', $questao->id)->get()->last();
         $questaoPosterior = $this->questao->where('id', '>', $questao->id)->get()->first();
         return view('questao.edit', ['questao' => $questao, 'questaoAnterior' => $questaoAnterior, 'questaoPosterior' => $questaoPosterior]);
@@ -112,6 +110,12 @@ class QuestaoController extends Controller
         $questao->delete();
         return redirect()->route('questao.index');
     }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
     public function principal()
     {
         //
@@ -137,6 +141,12 @@ class QuestaoController extends Controller
         $questao->respostas = $questao->respostas->shuffle();
         return view('principal.index',['questao' => $questao]);
     }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
     public function verifica(Request $request)
     {
         //

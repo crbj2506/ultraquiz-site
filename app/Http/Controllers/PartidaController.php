@@ -18,6 +18,9 @@ class PartidaController extends Controller
         //Se não houve request [GET] do ID da questão, LIMPA session partida
         if(!$request->questao){
             $request->session()->forget('partida');
+        } elseif($request->session()->missing('partida')) {
+            //Houve request [GET] mas a partida expirou
+            return redirect()->route('partida.index');
         }
 
         // Se session partida existir, restaura
