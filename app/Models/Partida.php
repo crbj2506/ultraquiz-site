@@ -25,37 +25,31 @@ class Partida extends Model
             }
         }
     }
-    public function criar(){
-        // forma um ARRAY com as últimas perguntas feitas (75%)
+    public function criar(){ // MELHORAR // Verificar se tem questões suficientes para a partida antes do loop ou fazer escape com a informação
         $this->questoes = new Collection();
-        $recentes = Estatistica::limit(Questao::count()* 0.75)->orderBy('id', 'desc')->get()->pluck('questao_id')->all();
 
+        $idQuestoesPartida = [];
         // Sorteia as Questões da Partida
-        for ($i=0, $evitaLoop = 0; $i < env('APP_NUMERO_QUESTOES_PARTIDA'); $i++) { 
-            $questao = null;
-            while ($questao == null) {
-                $id = rand(1,Questao::count());
+        for ($i = 0; $i < env('APP_NUMERO_QUESTOES_PARTIDA'); $i++) { 
 
-                $questao = Questao::find($id);
+            // Para as cinco primeiras Questões da partida
+            if ($i < 5) {
+                // Sorteia uma Questão das 10 mais fáceis (dentro da função), não recentes (dentro da função), que ainda não estejam na partida
+                $questao = Questao::facil()->whereNotIn('id', $idQuestoesPartida)->get()->shuffle()->first();
 
-                    //dd($questao->taxaAcerto(),$questao->vezesRespondida());
-
-                //Descartar questões recentes, com menos de 4 alternativas e que já tenham sido selecionadas para a partida
-                if($questao->respostas->count() < 4 || (in_array($id, $recentes) || in_array($id, $this->questoes->pluck('id')->all()))){
-                    $questao = null;
-                //Descarta questões mais difíceis para a primeira questão da partida
-                }elseif ( $i==0 && ($questao->taxaAcerto() < 75 || $questao->vezesRespondida() < 5) && $evitaLoop < 50 ) {
-                    $questao = null;
-                    $evitaLoop++;
-                }elseif ( $i==0 && ($questao->taxaAcerto() < 75 || $questao->vezesRespondida() < 4) && $evitaLoop < 150 ) {
-                    $questao = null;
-                    $evitaLoop++;
-                }elseif ( $i==0 && ($questao->taxaAcerto() < 75 || $questao->vezesRespondida() < 3) && $evitaLoop < 250 ) {
-                    $questao = null;
-                    $evitaLoop++;
-                }
+            // Para as demais posições 
+            } else {
+                $questao = Questao::aleatoria()->whereNotIn('id', $idQuestoesPartida)->get()->shuffle()->first();
             }
-            $this->questoes[] = $questao;
+
+            // Verifica Questão ( Se é de um Administraddor, se tem alternativas suficientes e se está aprovada)
+            if ($questao->verifica()) {
+                $idQuestoesPartida[] = $questao->id;
+                $this->questoes[] = $questao;
+            } else {
+                $i--;
+            }
+
         }
 
         //Percorre as questões e monta as alternativas

@@ -18,6 +18,12 @@ const app = createApp({});
 import ExampleComponent from './components/ExampleComponent.vue';
 app.component('example-component', ExampleComponent);
 
+import SelectFilterComponent from './components/SelectFilterComponent.vue';
+app.component('select-filter-component', SelectFilterComponent);
+
+import InputGroupComponent from './components/InputGroupComponent.vue';
+app.component('input-group-component', InputGroupComponent);
+
 /**
  * The following block of code may be used to automatically register your
  * Vue components. It will recursively scan this directory for the Vue

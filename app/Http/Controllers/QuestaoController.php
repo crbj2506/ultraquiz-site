@@ -202,4 +202,28 @@ class QuestaoController extends Controller
         //dd($estatisticas);
         return view('principal.estatistica',['estatisticas' => $estatisticas]);
     }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
+    public function sugestaoIndex()
+    {
+        //
+        return view('questao.sugerir');
+    }
+
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
+    public function sugestaoCreate()
+    {
+        //
+        return view('questao.sugerir');
+    }
+
 }
