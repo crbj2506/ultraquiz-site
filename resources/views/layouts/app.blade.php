@@ -1,150 +1,157 @@
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- CSRF Token -->
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+        <!-- CSRF Token -->
+        <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ config('app.name', 'Laravel') }}</title>
 
-    <!-- Fonts -->
-    <link rel="dns-prefetch" href="//fonts.gstatic.com">
-    <link href="https://fonts.bunny.net/css?family=Nunito" rel="stylesheet">
+        <!-- Fonts -->
+        <link rel="dns-prefetch" href="//fonts.gstatic.com">
+        <link href="https://fonts.bunny.net/css?family=Nunito" rel="stylesheet">
 
-    <!-- Scripts -->
-    @vite(['resources/sass/app.scss', 'resources/js/app.js'])
-</head>
-<body>
-    <div id="app">
-        <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm">
-            <div class="container-fluid">
-                <a class="navbar-brand d-none d-sm-block" href="{{ url('/') }}">
-                    <img class="" src="{{ URL::to('/') }}/img/logo_ultraquiz.png">
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="{{ __('Toggle navigation') }}">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+        <!-- Scripts -->
+        @vite(['resources/sass/app.scss', 'resources/js/app.js'])
+    </head>
+    <body>
+        <div id="app">
+            <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm">
+                <div class="container-fluid">
+                    <a class="navbar-brand d-none d-sm-block" href="{{ url('/') }}">
+                        <img class="" src="{{ URL::to('/') }}/img/logo_ultraquiz.png">
+                    </a>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="{{ __('Toggle navigation') }}">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
 
-                <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                    <!-- Left Side Of Navbar -->
-                    <ul class="navbar-nav me-auto">
+                    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                        <div class="container-fluid  d-flex flex-wrap-reverse justify-content-end">
+                            <div class="">
+                                <ul class="navbar-nav me-auto">
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="{{ route('questao.principal') }}">{{ __('Responder Questões') }}</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="{{ route('partida.index') }}">{{ __('Jogar uma Partida') }}</a>
+                                    </li>
+                                    @guest
+                                        @if (Route::has('login'))
+                                            <li class="nav-item">
+                                                <a class="nav-link" href="{{ route('login') }}">{{ __('Login') }}</a>
+                                            </li>
+                                        @endif
 
-                    </ul>
+                                        @if (Route::has('register'))
+                                            <li class="nav-item">
+                                                <a class="nav-link" href="{{ route('register') }}">{{ __('Register') }}</a>
+                                            </li>
+                                        @endif
+                                    @endguest
+                                </ul>
+                            </div>
+                            <div class="">
+                                <ul class="navbar-nav me-auto">
+                                    @auth
+                                        @if(auth()->user()->permissoes->contains('permissao', '=', 'Supervisor') || auth()->user()->permissoes->contains('permissao', '=', 'Administrador'))
+                                            <li class="nav-item dropdown">
+                                                <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
+                                                {{ __('Menu de Supervisor') }}
+                                                </a>
+                                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                                    <a class="dropdown-item" href="{{ route('sugestaopormim.criar') }}">
+                                                        {{ __('Fazer Sugestão') }}
+                                                    </a>
+                                                    <a class="dropdown-item" href="{{ route('sugestoespormim.listar') }}">
+                                                        {{ __('Minhas Sugestões') }}
+                                                    </a>
+                                                    <a class="dropdown-item" href="{{ route('sugestoes.listar') }}">
+                                                        {{ __('Verificar Sugestões') }}
+                                                    </a>
+                                                </div>
+                                            </li>
+                                        @endif
+                                    @endauth
+                                </ul>
+                            </div>
 
-                    <!-- Right Side Of Navbar -->
-                    <ul class="navbar-nav ms-auto">
-                        <!-- Authentication Links -->
-                        @guest
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('partida.index') }}">{{ __('Jogar Partida') }}</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('questao.principal') }}">{{ __('Responder Questões') }}</a>
-                                </li>
-                            @if (Route::has('login'))
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('login') }}">{{ __('Login') }}</a>
-                                </li>
-                            @endif
 
-                            @if (Route::has('register'))
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('register') }}">{{ __('Register') }}</a>
-                                </li>
-                            @endif
-                        @else
-                            @if(auth()->user()->permissoes->contains('permissao', '=', 'Supervisor') || auth()->user()->permissoes->contains('permissao', '=', 'Administrador'))
+                            <div class="">
+                                <ul class="navbar-nav me-auto">
+                                    @auth
+                                        @if(auth()->user()->permissoes->contains('permissao', '=', 'Administrador'))
+                                        
+                                            <li class="nav-item dropdown">
+                                                <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
+                                                {{ __('Menu de Administrador') }}
+                                                </a>
+
+                                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                                    <a class="dropdown-item" href="{{ route('estatistica.index') }}">
+                                                        {{ __('Estatisticas') }}
+                                                    </a>
+                                                    <a class="dropdown-item" href="{{ route('log.index') }}">
+                                                        {{ __('Logs de Acesso') }}
+                                                    </a>
+                                                    <a class="dropdown-item" href="{{ route('permissao.index') }}">
+                                                        {{ __('Permissões Possíveis') }}
+                                                    </a>
+                                                    <a class="dropdown-item" href="{{ route('questao.index') }}">
+                                                        {{ __('Questões') }}
+                                                    </a>
+                                                    <a class="dropdown-item" href="{{ route('sugestao.index') }}">
+                                                        {{ __('Sugestões') }}
+                                                    </a>
+                                                    <a class="dropdown-item" href="{{ route('user.index') }}">
+                                                        {{ __('Usuários do Sistema') }}
+                                                    </a>
+                                                </div>
+                                            </li>
+                                        @endif
+                                    @endauth
+                                </ul>
+                            </div>
+                            <div class="">
+                                <ul class="navbar-nav me-auto">
+                                    @auth
                                 <li class="nav-item dropdown">
                                     <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                    {{ __('Questões') }}
+                                        {{ Auth::user()->name }}
                                     </a>
 
                                     <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                        <a class="dropdown-item" href="{{ route('questao.index') }}">
-                                            {{ __('Listar') }}
+                                        <a class="dropdown-item" href="{{ route('logout') }}"
+                                        onclick="event.preventDefault();
+                                                        document.getElementById('logout-form').submit();">
+                                            {{ __('Logout') }}
                                         </a>
-                                        <a class="dropdown-item" href="{{ route('questao.create') }}">
-                                            {{ __('Adicionar') }}
-                                        </a>
+
+                                        <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+                                            @csrf
+                                        </form>
                                     </div>
                                 </li>
-                            @endif
-                            @if(auth()->user()->permissoes->contains('permissao', '=', 'Administrador'))
-                                <li class="nav-item dropdown">
-                                    <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                    {{ __('Permissões') }}
-                                    </a>
-
-                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                        <a class="dropdown-item" href="{{ route('permissao.index') }}">
-                                            {{ __('Listar') }}
-                                        </a>
-                                        <a class="dropdown-item" href="{{ route('permissao.create') }}">
-                                            {{ __('Adicionar') }}
-                                        </a>
-                                    </div>
-                                </li>
-                                <li class="nav-item dropdown">
-                                    <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                    {{ __('Usuários') }}
-                                    </a>
-
-                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                        <a class="dropdown-item" href="{{ route('user.index') }}">
-                                            {{ __('Listar') }}
-                                        </a>
-                                        <a class="dropdown-item" href="{{ route('user.create') }}">
-                                            {{ __('Adicionar') }}
-                                        </a>
-                                    </div>
-                                </li>
-                                <li class="nav-item dropdown">
-                                    <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                    {{ __('Logs e Estatísticas') }}
-                                    </a>
-
-                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                        <a class="dropdown-item" href="{{ route('log.index') }}">
-                                            {{ __('Logs de Acesso') }}
-                                        </a>
-                                        <a class="dropdown-item" href="{{ route('estatistica.index') }}">
-                                            {{ __('Estatísticas') }}
-                                        </a>
-                                    </div>
-                                </li>
-                            @endif
-                            <li class="nav-item dropdown">
-                                <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                    {{ Auth::user()->name }}
-                                </a>
-
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <a class="dropdown-item" href="{{ route('logout') }}"
-                                       onclick="event.preventDefault();
-                                                     document.getElementById('logout-form').submit();">
-                                        {{ __('Logout') }}
-                                    </a>
-
-                                    <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
-                                        @csrf
-                                    </form>
-                                </div>
-                            </li>
-                        @endguest
-                    </ul>
+                                    @endauth
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </nav>
+            </nav>
 
-        <main class="py-4">
-            @yield('content')
-        </main>
+            <main class="py-4">
+                @yield('content')
+            </main>
 
-        <footer class="footer">
-            <x-rodape/>
-        </footer>
-    </div>
-</body>
+            <footer class="footer">
+                <x-rodape/>
+            </footer>
+        </div>
+    </body>
 </html>
+
+
+
+
