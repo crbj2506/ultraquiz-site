@@ -27,10 +27,7 @@ Route::post('/', [App\Http\Controllers\QuestaoController::class, 'verifica'])->n
 
 Route::middleware('verified', 'permissao:Jogador,Supervisor,Administrador')
     ->name('partida.index')
-    ->get('/partida/{questao?}', [App\Http\Controllers\PartidaController::class, 'index']);
-Route::middleware('verified', 'permissao:Jogador,Supervisor,Administrador')
-    ->name('partida.index')
-    ->post('/partida/{questao?}', [App\Http\Controllers\PartidaController::class, 'index']);
+    ->match(['get','post'], '/partida/{questao?}', [App\Http\Controllers\PartidaController::class, 'index']);
     
 
 
