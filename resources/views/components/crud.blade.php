@@ -17,7 +17,7 @@
                     {{$lista}}
                 </table>
             </div>
-            <x-paginacao :p="$l"></x-paginacao>
+            <x-paginacao :paginate="$l"></x-paginacao>
         </div>
     @else
         <div class="card m-3">

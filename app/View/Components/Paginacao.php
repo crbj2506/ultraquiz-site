@@ -6,26 +6,31 @@ use Illuminate\View\Component;
 
 class Paginacao extends Component
 {
-    public $p;
+    public $paginate;
     /**
      * Create a new component instance.
      *
      * @return void
      */
-    public function __construct($p)
+    public function __construct($paginate = null)
     {
-        //
-        $this->p = $p;
-        
+        // allow component to be instantiated without parameter
+        $this->paginate = $paginate;
+
+        // only calculate ranges when paginate is provided
+        if (!$this->paginate) {
+            return;
+        }
+
         // Dinamismo na paginação
-        if($this->p->currentPage() == 1 || $this->p->currentPage() == 2){
-            $this->p->d1 = $this->p->currentPage() - 1;
-            $this->p->d2 = 4 - $this->p->d1;
-        }elseif($this->p->currentPage() == $this->p->lastPage() || $this->p->currentPage() == $this->p->lastPage() -1){
-            $this->p->d2 = $this->p->lastPage() - $this->p->currentPage();
-            $this->p->d1 = 4 - $this->p->d2 ; 
+        if($this->paginate->currentPage() == 1 || $this->paginate->currentPage() == 2){
+            $this->paginate->d1 = $this->paginate->currentPage() - 1;
+            $this->paginate->d2 = 4 - $this->paginate->d1;
+        }elseif($this->paginate->currentPage() == $this->paginate->lastPage() || $this->paginate->currentPage() == $this->paginate->lastPage() -1){
+            $this->paginate->d2 = $this->paginate->lastPage() - $this->paginate->currentPage();
+            $this->paginate->d1 = 4 - $this->paginate->d2 ; 
         }else{
-            $this->p->d1 = $this->p->d2 = 2;
+            $this->paginate->d1 = $this->paginate->d2 = 2;
         }
     }
 

@@ -29,27 +29,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="card-footer">
-                    {{--$permissoes->links() BUGADO!!!!!--}}
-                    <ul class="pagination justify-content-center">
-                        <li class="page-item">
-                            <a class="page-link" href="{{ $permissoes->url(1) }}"><<</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="{{ $permissoes->previousPageUrl() }}" tabindex="-1" aria-disabled="true"><</a>
-                        </li>@for ( $i= 1 ; $i <= $permissoes->lastPage() ; $i++)
-                            <li class="page-item {{ $permissoes->currentPage() == $i ? 'active' : '' }}">
-                                <a class="page-link" href="{{ $permissoes->url($i) }}">{{ $i }}</a>
-                            </li>
-                        @endfor
-                        <li class="page-item">
-                            <a class="page-link" href="{{ $permissoes->nextPageUrl() }}">></a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="{{ $permissoes->url($permissoes->lastPage()) }}">>></a>
-                        </li>
-                    </ul>
-                </div>
+                <x-paginacao :paginate="$permissoes" />
             </div>
         </div>
     </div>
