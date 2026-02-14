@@ -169,5 +169,8 @@
 
             </div>
         @endif
+        @if($sugestoes)
+            <x-paginacao :paginate="$sugestoes" />
+        @endif
     </x-crud>
 @endsection

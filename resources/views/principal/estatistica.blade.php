@@ -35,27 +35,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="card-footer">
-                    {{--$estatisticas->links() BUGADO!!!!!--}}
-                    <ul class="pagination justify-content-center">
-                        <li class="page-item">
-                            <a class="page-link" href="{{ $estatisticas->url(1) }}"><<</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="{{ $estatisticas->previousPageUrl() }}" tabindex="-1" aria-disabled="true"><</a>
-                        </li>@for ( $i= 1 ; $i <= $estatisticas->lastPage() ; $i++)
-                            <li class="page-item {{ $estatisticas->currentPage() == $i ? 'active' : '' }}">
-                                <a class="page-link" href="{{ $estatisticas->url($i) }}">{{ $i }}</a>
-                            </li>
-                        @endfor
-                        <li class="page-item">
-                            <a class="page-link" href="{{ $estatisticas->nextPageUrl() }}">></a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="{{ $estatisticas->url($estatisticas->lastPage()) }}">>></a>
-                        </li>
-                    </ul>
-                </div>
+                <x-paginacao :paginate="$estatisticas" />
             </div>
         </div>
     </div>

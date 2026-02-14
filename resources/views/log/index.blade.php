@@ -56,26 +56,7 @@
                 @endif
             @endforeach
         </div>
-        <div class="card-footer">
-            <ul class="pagination justify-content-center">
-                <li class="page-item">
-                    <a class="page-link" href="{{ $logs->url(1) }}"><<</a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="{{ $logs->previousPageUrl() }}" tabindex="-1" aria-disabled="true"><</a>
-                </li>@for ( $i= 1 ; $i <= $logs->lastPage() ; $i++)
-                    <li class="page-item {{ $logs->currentPage() == $i ? 'active' : '' }}">
-                        <a class="page-link" href="{{ $logs->url($i) }}">{{ $i }}</a>
-                    </li>
-                @endfor
-                <li class="page-item">
-                    <a class="page-link" href="{{ $logs->nextPageUrl() }}">></a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="{{ $logs->url($logs->lastPage()) }}">>></a>
-                </li>
-            </ul>
-        </div>
+        <x-paginacao :paginate="$logs" />
     </div>
 </div>
 @endsection

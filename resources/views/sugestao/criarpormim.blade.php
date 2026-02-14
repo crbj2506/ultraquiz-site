@@ -10,7 +10,7 @@
                     <div class="col text-center">
                     </div>
                     <div class="col text-end">
-                            <a href='{{ route("sugestoespormim.listar")}}' class="btn btn-sm btn-outline-primary">{{ __('Milhas Sugestões') }}</a>
+                            <a href='{{ route("sugestoespormim.listar")}}' class="btn btn-sm btn-outline-primary">{{ __('Minhas Sugestões') }}</a>
                     </div>
                 </div>
             </div>

@@ -40,7 +40,7 @@
                         @endforeach
                     </tbody>
                 </table>
-            <x-paginacao :p="$sugestoes"></x-paginacao>
+            <x-paginacao :paginate="$sugestoes" />
         </div>
     </div>
 @endsection
