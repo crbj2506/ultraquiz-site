@@ -68,6 +68,11 @@
                 </div>
                 <div class="card-footer">
                     <a href="{{ route('user.edit',['user' => $user->id])}}" class="btn btn-sm btn-outline-primary">Editar</a>
+                    <form action="{{ route('user.destroy',['user' => $user->id])}}" method="POST" style="display:inline;">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja excluir este usuário?')">Excluir</button>
+                    </form>
                 </div>
             </div>
         </div>
