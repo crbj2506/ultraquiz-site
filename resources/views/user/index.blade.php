@@ -18,6 +18,7 @@
                                 <th scope="col">Criado em</th>
                                 <th scope="col">Ver</th>
                                 <th scope="col">Editar</th>
+                                <th scope="col">Excluir</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -30,6 +31,13 @@
                                     <td>{{$p['created_at']}}</td>
                                     <td><a href="{{ route('user.show',['user' => $p['id']])}}" class="btn btn-sm btn-outline-primary" class="btn btn-sm btn-outline-warning">Ver</a></td>
                                     <td><a href="{{ route('user.edit',['user' => $p['id']])}}" class="btn btn-sm btn-outline-warning">Editar</a></td>
+                                    <td>
+                                        <form action="{{ route('user.destroy',['user' => $p['id']])}}" method="POST" style="display:inline;">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja excluir este usuário?')">Excluir</button>
+                                        </form>
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

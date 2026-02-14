@@ -145,6 +145,12 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
-        //
+        // Remove as permissões do usuário
+        PermissaoUser::where('user_id', $user->id)->delete();
+        
+        // Deleta o usuário (soft delete)
+        $user->delete();
+        
+        return redirect()->route('user.index')->with('success', 'Usuário excluído com sucesso');
     }
 }
