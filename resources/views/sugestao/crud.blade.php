@@ -14,6 +14,20 @@
     >
         @if($sugestoes)
             <x-slot:filtro>
+                <div class="card-header">
+                    {{-- Formulário de filtros: envia via GET para preservar parâmetros na paginação --}}
+                    <form id="formFiltroSugestao" method="GET" action="/sugestao">  
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">Filtros</span>
+                            <input name="f_pergunta" type="text" class="form-control" placeholder="Parte da Pergunta" value="{{ request('f_pergunta') }}">
+                            <input name="f_resposta" type="text" class="form-control" placeholder="Parte da Resposta" value="{{ request('f_resposta') }}">
+                            <input name="f_fonte" type="text" class="form-control" placeholder="Parte da Fonte" value="{{ request('f_fonte') }}">
+                            <input name="f_criada_por" type="text" class="form-control" placeholder="Criada por (nome)" value="{{ request('f_criada_por') }}">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Filtrar</button>
+                            <a href="{{ route('sugestoes.listar') }}" class="btn btn-sm btn-outline-success">Limpar</a>
+                        </div>
+                    </form>
+                </div>
             </x-slot>
             <x-slot:lista>
                 <thead>
@@ -51,6 +65,20 @@
             </x-slot>
         @else
             <x-slot:filtro>
+                {{-- Exibe filtros também nesta view resource (/sugestao) para permitir pesquisa global --}}
+                <div class="card-header">
+                    <form id="formFiltroSugestaoResource" method="GET" action="{{ route('sugestao.index') }}">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">Filtros</span>
+                            <input name="f_pergunta" type="text" class="form-control" placeholder="Parte da Pergunta" value="{{ request('f_pergunta') }}">
+                            <input name="f_resposta" type="text" class="form-control" placeholder="Parte da Resposta" value="{{ request('f_resposta') }}">
+                            <input name="f_fonte" type="text" class="form-control" placeholder="Parte da Fonte" value="{{ request('f_fonte') }}">
+                            <input name="f_criada_por" type="text" class="form-control" placeholder="Criada por (nome)" value="{{ request('f_criada_por') }}">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Filtrar</button>
+                            <a href="{{ route('sugestao.index') }}" class="btn btn-sm btn-outline-success">Limpar</a>
+                        </div>
+                    </form>
+                </div>
             </x-slot>
             <x-slot:lista>
             </x-slot>
