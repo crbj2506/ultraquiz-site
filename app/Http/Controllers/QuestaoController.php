@@ -20,10 +20,33 @@ class QuestaoController extends Controller
      *
      * @return \Illuminate\Contracts\View\View
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
-        $questoes = $this->questao->paginate(10);
+        // -----------------------------------------------------------
+        // Alteração: suporte a filtros de listagem de questões
+        // Campos suportados (via query string / GET):
+        // - f_pergunta : pesquisa por parte do texto da pergunta
+        // - f_resposta  : pesquisa por parte do texto da resposta correta
+        // Observação: usamos "LIKE %valor%" para correspondência parcial.
+        // -----------------------------------------------------------
+
+        // Cria uma query base a partir do model Questao
+        $query = $this->questao->newQuery();
+
+        // Aplica filtro por parte da pergunta quando informado
+        if ($request->filled('f_pergunta')) {
+            $query->where('pergunta', 'like', '%' . $request->input('f_pergunta') . '%');
+        }
+
+        // Aplica filtro por parte da resposta correta quando informado
+        if ($request->filled('f_resposta')) {
+            $query->where('resposta', 'like', '%' . $request->input('f_resposta') . '%');
+        }
+
+        // Pagina o resultado e preserva os parâmetros de query (mantém os filtros nos links de página)
+        $questoes = $query->paginate(10)->appends($request->query());
+
+        // Retorna a view com a coleção paginada
         return view('questao.index',['questoes' => $questoes]);
     }
 

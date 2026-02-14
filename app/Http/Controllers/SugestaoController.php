@@ -17,10 +17,28 @@ class SugestaoController extends Controller
      *
      * @return \Illuminate\Contracts\View\View
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
-        $sugestoes = Questao::paginate(10);
+        // Lista todas as sugestões com filtros opcionais (usado pela rota resource /sugestao)
+        $query = Questao::query();
+
+        if ($request->filled('f_pergunta')) {
+            $query->where('pergunta', 'like', '%' . $request->input('f_pergunta') . '%');
+        }
+        if ($request->filled('f_resposta')) {
+            $query->where('resposta', 'like', '%' . $request->input('f_resposta') . '%');
+        }
+        if ($request->filled('f_fonte')) {
+            $query->where('fonte', 'like', '%' . $request->input('f_fonte') . '%');
+        }
+        if ($request->filled('f_criada_por')) {
+            $nome = $request->input('f_criada_por');
+            $query->whereHas('user', function($q) use ($nome) {
+                $q->where('name', 'like', '%' . $nome . '%');
+            });
+        }
+
+        $sugestoes = $query->paginate(10)->appends($request->query());
         return view('sugestao.crud',['sugestoes' => $sugestoes]);
     }
 
@@ -186,18 +204,34 @@ class SugestaoController extends Controller
      *
      * @return \Illuminate\Contracts\View\View
      */
-    public function listarSugestoes()
+    public function listarSugestoes(Request $request)
     {
-        //
-        $sugestoes = Questao::where('questoes.user_id','!=', Auth::id())
+        // Lista sugestões de outros usuários com filtros opcionais
+        $query = Questao::where('questoes.user_id','!=', Auth::id())
             ->select('questoes.*', DB::raw( '(SELECT COUNT(aprovada) from verificacoes where questao_id = questoes.id group by questao_id ) as verificacoe' ), DB::raw( '(SELECT MAX(permissao_id) from permissoes_users where user_id = questoes.user_id) as permissao' ))
             ->distinct()
-            ->having('permissao', '!=', '3')
-            ->orderBy('verificacoe')
-            ->paginate(10)
-            //->get()
-            ;
-        //dd($sugestoes, Questao::find('205'));
+            ->having('permissao', '!=', '3');
+
+        // Aplicar filtros se presentes
+        if ($request->filled('f_pergunta')) {
+            $query->where('pergunta', 'like', '%' . $request->input('f_pergunta') . '%');
+        }
+        if ($request->filled('f_resposta')) {
+            $query->where('resposta', 'like', '%' . $request->input('f_resposta') . '%');
+        }
+        if ($request->filled('f_fonte')) {
+            $query->where('fonte', 'like', '%' . $request->input('f_fonte') . '%');
+        }
+        if ($request->filled('f_criada_por')) {
+            // filtra pelo nome do usuário criador
+            $nome = $request->input('f_criada_por');
+            $query->whereHas('user', function($q) use ($nome) {
+                $q->where('name', 'like', '%' . $nome . '%');
+            });
+        }
+
+        $sugestoes = $query->orderBy('verificacoe')->paginate(10)->appends($request->query());
+
         return view('sugestao.sugestoes',['sugestoes' => $sugestoes]);
     }
 
@@ -206,18 +240,37 @@ class SugestaoController extends Controller
      *
      * @return \Illuminate\Contracts\View\View
      */
-    public function listarSugestoesPorMim()
+    public function listarSugestoesPorMim(Request $request)
     {
-        //
-        $sugestoes = Questao::where('questoes.user_id','=', Auth::id())
+        // Lista sugestões criadas pelo usuário autenticado com filtros opcionais
+        $query = Questao::where('questoes.user_id','=', Auth::id())
             ->select('questoes.*', DB::raw( '(SELECT COUNT(aprovada) from verificacoes where questao_id = questoes.id group by questao_id ) as verificacoe' ), DB::raw( '(SELECT MAX(permissao_id) from permissoes_users where user_id = questoes.user_id) as permissao' ))
-            ->distinct()
-            //->having('permissao', '!=', '3')
-            ->orderByDesc('questoes.id')
-            ->paginate(10)
-            //->get()
-            ;
-        //dd($sugestoes, Questao::find('205'));
+            ->distinct();
+
+        // Aplicar filtros se presentes
+        if ($request->filled('f_pergunta')) {
+            $query->where('pergunta', 'like', '%' . $request->input('f_pergunta') . '%');
+        }
+        if ($request->filled('f_resposta')) {
+            $query->where('resposta', 'like', '%' . $request->input('f_resposta') . '%');
+        }
+        if ($request->filled('f_fonte')) {
+            $query->where('fonte', 'like', '%' . $request->input('f_fonte') . '%');
+        }
+        // NOVO: Filtro por criador da sugestão (nome do usuário)
+        // Usa whereHas para buscar na relação 'user' e filtrar por name como LIKE
+        if ($request->filled('f_criada_por')) {
+            // filtra pelo nome do usuário criador
+            $nome = $request->input('f_criada_por');
+            $query->whereHas('user', function($q) use ($nome) {
+                $q->where('name', 'like', '%' . $nome . '%');
+            });
+        }
+
+        // Paginação com appends() preserva os parâmetros de filtro na URL
+        // Exemplo: ?f_pergunta=teste&f_criada_por=João&page=2
+        $sugestoes = $query->orderByDesc('questoes.id')->paginate(10)->appends($request->query());
+
         return view('sugestao.sugestoespormim',['sugestoes' => $sugestoes]);
     }
 

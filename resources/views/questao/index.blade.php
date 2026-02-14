@@ -6,8 +6,24 @@
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header">{{ __('Lista de Questões') }}</div>
-
+                <div class="card-header">
+                    {{--
+                        Formulário de filtros adicionados:
+                        - envia via GET para permitir paginação preservando os parâmetros
+                        - campos: f_pergunta (parte da pergunta), f_resposta (parte da resposta correta)
+                    --}}
+                    <form id="formFiltroQuestao" method="GET" action="{{ route('questao.index') }}" class="">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">Filtros</span>
+                            <input name="f_pergunta" type="text" class="form-control" placeholder="Parte da Pergunta" value="{{ request('f_pergunta') }}">
+                            <input name="f_resposta" type="text" class="form-control" placeholder="Parte da Resposta Correta" value="{{ request('f_resposta') }}">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Filtrar</button>
+                            <a href="{{ route('questao.index') }}" class="btn btn-sm btn-outline-success">Limpar</a>
+                        </div>
+                    </form>
+                </div>
                 <div class="card-body">
+
                     <table class="table table-striped table-hover">
                         <thead>
                             <tr>
@@ -39,6 +55,11 @@
                         </tbody>
                     </table>
                 </div>
+                {{--
+                    Componente de paginação reutilizável.
+                    Observação: os parâmetros de filtro são preservados via ->appends($request->query()) no controller,
+                    portanto os links de página manterão os filtros aplicados.
+                --}}
                 <x-paginacao :paginate="$questoes" />
             </div>
         </div>
