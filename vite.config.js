@@ -25,4 +25,13 @@ export default defineConfig({
             vue: 'vue/dist/vue.esm-bundler.js',
         },
     },
+    // Configuração para silenciar os avisos do Bootstrap/Sass
+    css: {
+        preprocessorOptions: {
+            scss: {
+                api: 'modern-compiler',
+                silenceDeprecations: ['import', 'global-builtin', 'color-functions', 'mixed-decls'],
+            },
+        },
+    },
 });
