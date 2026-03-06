@@ -283,9 +283,27 @@ class SugestaoController extends Controller
      */
     public function mostrarSugestao($sugestao)
     {
-        //
         $sugestao = Questao::find($sugestao);
-        return view('sugestao.mostrar',['sugestao' => $sugestao]);
+        
+        // Busca a próxima sugestão a ser avaliada (aproveitando o mesmo critério da lista)
+        // - Não pode ser do usuário logado
+        // - O usuário logado não pode ter avaliado (verificacoes)
+        // - Que tenha a permissão exigida (não seja de permissao 3 que teoricamente seria excluída da lista base) mas vamos seguir simples
+        
+        // Forma simples e eficiente:
+        $proximaSugestao = Questao::where('user_id', '!=', Auth::id())
+            ->whereDoesntHave('verificacoes', function($q) {
+                $q->where('user_id', Auth::id());
+            })
+            // prioriza as mais antigas ainda não avaliadas (ID ASC, por exemplo) ou aleatório
+            ->where('id', '!=', $sugestao->id)
+            ->oldest('id')
+            ->first();
+
+        return view('sugestao.mostrar',[
+            'sugestao' => $sugestao, 
+            'proxima' => $proximaSugestao ? $proximaSugestao->id : null
+        ]);
     }
 
 
@@ -312,7 +330,6 @@ class SugestaoController extends Controller
      */
     public function aprovarSugestao(Request $request, $sugestao)
     {
-        //
         $sugestao = Questao::find($sugestao);
         if($sugestao->user_id == Auth::id()){
             return view('auth.acesso-negado');
@@ -325,7 +342,19 @@ class SugestaoController extends Controller
             $verificacao->update(['aprovada' => $request->verificacao]);
         }
 
-        return view('sugestao.mostrar',['sugestao' => $sugestao]);
+        // Buscar novamente a próxima sugestão pendente para manter o botão "Próxima" na tela logo após o voto
+        $proximaSugestao = Questao::where('user_id', '!=', Auth::id())
+            ->whereDoesntHave('verificacoes', function($q) {
+                $q->where('user_id', Auth::id());
+            })
+            ->where('id', '!=', $sugestao->id)
+            ->oldest('id')
+            ->first();
+
+        return view('sugestao.mostrar',[
+            'sugestao' => $sugestao,
+            'proxima' => $proximaSugestao ? $proximaSugestao->id : null
+        ]);
     }
 
 

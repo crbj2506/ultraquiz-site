@@ -155,7 +155,12 @@
                     </div>
                     <div class="col text-center">{{$sugestao->verifiquei() === 1 ? 'Eu aprovei' : ($sugestao->verifiquei() === 0 ? 'Eu reprovei' : 'Ainda não verifiquei')}}
                     </div>
-                    <div class="col text-end"> Implementar Botões Anterior e Posterior 
+                    <div class="col text-end">
+                        @if(isset($proxima) && $proxima)
+                            <a href="{{ route('sugestao.mostrar', ['sugestao' => $proxima]) }}" class="btn btn-sm btn-outline-primary">Próxima Sugestão &raquo;</a>
+                        @else
+                            <a href="{{ route('sugestoes.listar') }}" class="btn btn-sm btn-outline-secondary">Voltar à Lista</a>
+                        @endif
                     </div>
                 </div>
             </div>
