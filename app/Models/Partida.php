@@ -13,9 +13,9 @@ class Partida extends Model
 {
     use HasFactory;
     public function atualizaPlacar(){
-        //Atualiza Placar
-        $this->a = $this->b = $this->e = null;
-        foreach ($this->questoes as $key => $q) {
+        //Atualiza Placar baseando-se nas respostas já dadas
+        $this->a = $this->b = $this->e = 0;
+        foreach ($this->questoes as $q) {
             if ($q->respAnt === '0') {
                 $this->a++;
             } elseif ($q->respAnt === null) {
@@ -23,6 +23,67 @@ class Partida extends Model
             } else {
                 $this->e++;
             }
+        }
+    }
+
+    public function getState()
+    {
+        // Exporta de forma super leve para a Sessão (Apenas IDs e Inteiros)
+        $questoesData = [];
+        foreach ($this->questoes as $q) {
+            $questoesData[] = [
+                'id' => $q->id,
+                'respAnt' => $q->respAnt,
+                'opcoes' => $q->respostas->pluck('id')->toArray()
+            ];
+        }
+
+        return [
+            'questoes_data' => $questoesData,
+            'indice' => $this->indice ?? 0,
+            'a' => $this->a,
+            'b' => $this->b,
+            'e' => $this->e
+        ];
+    }
+
+    public function restoreState($state)
+    {
+        // Reconstrói a Partida puxando dados base das questões em lote
+        $this->a = $state['a'];
+        $this->b = $state['b'];
+        $this->e = $state['e'];
+        $this->indice = $state['indice'];
+        
+        $idsQuestoes = collect($state['questoes_data'])->pluck('id')->toArray();
+        $todasRespostasIds = collect($state['questoes_data'])->pluck('opcoes')->flatten()->unique()->filter(function($id) { return $id !== 0; })->toArray();
+        
+        // Puxa as questões e respostas ativas do banco em apenas 2 queries master
+        $bancoQuestoes = Questao::whereIn('id', $idsQuestoes)->get()->keyBy('id');
+        $bancoRespostas = Resposta::whereIn('id', $todasRespostasIds)->get()->keyBy('id');
+        
+        $this->questoes = new Collection();
+        
+        foreach ($state['questoes_data'] as $qData) {
+            if (!isset($bancoQuestoes[$qData['id']])) continue;
+            
+            $q = clone $bancoQuestoes[$qData['id']];
+            $q->respAnt = $qData['respAnt'];
+            $q->respostas = new Collection();
+            
+            // Remonta as opções respeitando a ordem original que foi embaralhada pelo criar()
+            foreach ($qData['opcoes'] as $respId) {
+                if ($respId === 0) {
+                    $respostaCorreta = new Resposta();
+                    $respostaCorreta->id = 0;
+                    $respostaCorreta->alternativa = $q->resposta;
+                    $q->respostas->push($respostaCorreta);
+                } elseif (isset($bancoRespostas[$respId])) {
+                    $q->respostas->push($bancoRespostas[$respId]);
+                }
+            }
+            
+            $this->questoes->push($q);
         }
     }
     public function criar(){

@@ -17,22 +17,22 @@ class PartidaController extends Controller
     {
         //Se não houve request [GET] do ID da questão, LIMPA session partida
         if(!$request->questao){
-            $request->session()->forget('partida');
-        } elseif($request->session()->missing('partida')) {
+            $request->session()->forget('partida_state');
+        } elseif($request->session()->missing('partida_state')) {
             //Houve request [GET] mas a partida expirou
             return redirect()->route('partida.index');
         }
 
-        // Se session partida existir, restaura
-        if($request->session()->exists('partida')){
-            $this->partida = $request->session()->get('partida');
+        // Se session partida_state existir, restaura
+        if($request->session()->exists('partida_state')){
+            $this->partida->restoreState($request->session()->get('partida_state'));
 
         //Se não, cria partida
         }else{
             $this->partida->criar();
         }
 
-        if($request->all()){
+        if($request->all() && isset($request->all('resposta')['resposta'])){
             // Havendo request [POST] grava resposta dada na questao
             $questaoRespondida = $this->partida->questoes->find($request->questao);
             if (! $questaoRespondida) {
@@ -53,13 +53,14 @@ class PartidaController extends Controller
         //Define questão a ser apresentada
         $questao = $this->partida->defineQuestao($request->questao);
         if (! $questao) {
+            $request->session()->forget('partida_state');
             $request->session()->forget('partida');
 
             return redirect()->route('partida.index')->with('status', 'Não foi possível iniciar a partida. Verifique se existem questões suficientes e aprovadas.');
         }
 
-        //Grava a partida em sessão
-        $request->session()->put('partida', $this->partida);
+        //Grava a partida em sessão de forma leve (Apenas Inteiros e IDs)
+        $request->session()->put('partida_state', $this->partida->getState());
 
         return view('partida.index',['questao' => $questao,'partida' => $this->partida]);
     }
