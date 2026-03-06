@@ -131,35 +131,36 @@
                 </div>
             </div>
 
-            <div class="card-footer container"> {{---fluid d-flex border px-2--}}
-                <div class="row p-0">
-                    <div class="col container-fluid d-flex">
-                        <form method="POST" id="formAprovar" enctype="multipart/form-data" action="{{ route('sugestao.aprovar',['sugestao' => $sugestao])}}">
+            <div class="card-footer bg-light p-4"> 
+                <div class="row align-items-center">
+                    <div class="col-md-4 d-flex gap-2 justify-content-center justify-content-md-start mb-3 mb-md-0">
+                        <form method="POST" id="formAprovar" action="{{ route('sugestao.aprovar',['sugestao' => $sugestao])}}">
                             @csrf
                             <input type="hidden" value="1" name="verificacao">
                             <button 
                                 type="submit" 
                                 form="formAprovar" 
-                                class="btn btn-sm btn-outline-success me-2  {{$sugestao->verifiquei() === 1 ? 'disabled' : ''}}" >Aprovar                                
+                                class="btn btn-success px-4 {{$sugestao->verifiquei() === 1 ? 'disabled' : ''}}" >Aprovar                                
                             </button>
                         </form>
-                        <form method="POST" id="formReprovar" enctype="multipart/form-data" action="{{ route('sugestao.aprovar',['sugestao' => $sugestao])}}">
+                        <form method="POST" id="formReprovar" action="{{ route('sugestao.aprovar',['sugestao' => $sugestao])}}">
                             @csrf
                             <input type="hidden" value="0" name="verificacao">
                             <button 
                                 type="submit" 
                                 form="formReprovar" 
-                                class="btn btn-sm btn-outline-danger {{$sugestao->verifiquei() === 0 ? 'disabled' : ''}}">Reprovar                                
+                                class="btn btn-danger px-4 {{$sugestao->verifiquei() === 0 ? 'disabled' : ''}}">Reprovar                                
                             </button>
                         </form>
                     </div>
-                    <div class="col text-center">{{$sugestao->verifiquei() === 1 ? 'Eu aprovei' : ($sugestao->verifiquei() === 0 ? 'Eu reprovei' : 'Ainda não verifiquei')}}
+                    <div class="col-md-4 text-center fw-bold fs-5 text-secondary">
+                        {{$sugestao->verifiquei() === 1 ? 'Eu aprovei ✓' : ($sugestao->verifiquei() === 0 ? 'Eu reprovei ✗' : 'Pendente')}}
                     </div>
-                    <div class="col text-end">
+                    <div class="col-md-4 text-center text-md-end mt-3 mt-md-0">
                         @if(isset($proxima) && $proxima)
-                            <a href="{{ route('sugestao.mostrar', ['sugestao' => $proxima]) }}" class="btn btn-sm btn-outline-primary">Próxima Sugestão &raquo;</a>
+                            <a href="{{ route('sugestao.mostrar', ['sugestao' => $proxima]) }}" class="btn btn-primary px-4 shadow-sm">Próxima Sugestão &raquo;</a>
                         @else
-                            <a href="{{ route('sugestoes.listar') }}" class="btn btn-sm btn-outline-secondary">Voltar à Lista</a>
+                            <a href="{{ route('sugestoes.listar') }}" class="btn btn-outline-secondary px-4">Voltar à Lista</a>
                         @endif
                     </div>
                 </div>

@@ -1,8 +1,100 @@
 // Fonts
-@import url('https://fonts.bunny.net/css?family=Nunito');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@500;700;800&family=Poppins:wght@400;500;600;700&display=swap');
 
 // Variables
 @import 'variables';
 
 // Bootstrap
 @import 'bootstrap/scss/bootstrap';
+
+// ===== Utilitários Customizados JW Quiz =====
+
+// Sobrescreve as Fontes de Cabeçalho (H1..H6)
+h1, h2, h3, h4, h5, h6, .card-header, .navbar-brand {
+  font-family: $font-family-headers;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+// Botões mais modernos com transição
+.btn {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  padding: 0.6rem 1.25rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $box-shadow-sm;
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+// Cards Premium Glass / Soft
+.card {
+  border: none;
+  box-shadow: $box-shadow;
+  border-radius: $border-radius-lg;
+  overflow: hidden;
+  margin-bottom: 2rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .card-header {
+    background: linear-gradient(135deg, rgba($primary, 0.05) 0%, rgba($secondary, 0.05) 100%);
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+    padding: 1.25rem 1.5rem;
+    font-size: 1.1rem;
+    color: $dark;
+  }
+}
+
+// Navbar Upgrade
+.navbar {
+  box-shadow: $box-shadow-sm !important;
+  backdrop-filter: blur(10px);
+  background: rgba(#ffffff, 0.9) !important;
+}
+
+// Animação de Entrada p/ Conteúdos
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+main.py-4 {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+// Estilização das Alternativas do Quiz
+.input-group.mb-3 {
+  transition: all 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.01);
+  }
+  
+  .input-group-text {
+    background-color: transparent;
+    color: $primary;
+    border-color: rgba(0,0,0,0.1);
+  }
+  
+  .form-control:disabled {
+    background-color: #fff;
+    color: $dark;
+    cursor: default;
+  }
+}

@@ -17,8 +17,8 @@
         @vite(['resources/sass/app.scss', 'resources/js/app.js'])
     </head>
     <body>
-        <div id="app">
-            <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm">
+        <div id="app" class="min-vh-100 d-flex flex-column bg-light">
+            <nav class="navbar navbar-expand-md navbar-light bg-white sticky-top">
                 <div class="container-fluid">
                     <a class="navbar-brand d-none d-sm-block" href="{{ url('/') }}">
                         <img class="" src="{{ URL::to('/') }}/img/logo_jwquiz.png">

@@ -1,7 +1,28 @@
-// Body
-$body-bg: #f8fafc;
-
 // Typography
-$font-family-sans-serif: 'Nunito', sans-serif;
-$font-size-base: 0.9rem;
+$font-family-sans-serif: 'Poppins', 'Inter', sans-serif;
+$font-family-base: 'Poppins', sans-serif;
+$font-family-headers: 'Outfit', sans-serif;
+
+$font-size-base: 1rem;
 $line-height-base: 1.6;
+
+// Paleta de Cores Premium Modernas
+$primary: #6366f1; // Indigo moderno
+$secondary: #8b5cf6; // Violeta
+$success: #10b981; // Verde vibrante
+$info: #0ea5e9; // Azul Sky
+$warning: #f59e0b; // Laranja suave
+$danger: #ef4444; // Vermelho coral
+$light: #ffffff;
+$dark: #0f172a; // Azul marinho muito escuro (Slate 900)
+
+// Body & Backgrounds
+$body-bg: #f8fafc; // Fundo slate claríssimo
+$body-color: #334155; // Texto leitura suave
+
+// Border Radius & Sombras Clássicas p/ Cards
+$border-radius-lg: 1rem;
+$border-radius: 0.75rem;
+$border-radius-sm: 0.5rem;
+$box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+$box-shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
