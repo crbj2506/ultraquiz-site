@@ -17,21 +17,24 @@
                                 break;
                             };
                             @endphp                            
-                            <div class="input-group mb-3">
-                                <span class="input-group-text fs-4 fw-bold">{{$letras[$key]}}</span>
-                                <input type="hidden" name="alternativa_{{$key}}" value="{{$r->id}}">
-                                <input type="text" 
-                                    class="form-control fs-4
-                                    {{isset($questao->respAnt) && $r->id == 0 ? 'is-valid' : ''}}
-                                    {{isset($questao->respAnt) && $questao->respAnt != 0 && $questao->respAnt == $r->id ? 'is-invalid' : ''}}
-                                    " 
-                                    id="alternativa_{{$key}}" value="{{$r->alternativa}}" disabled >
-                                @if (!isset($questao->respAnt))
-                                    <div class="input-group-text">
-                                        <input class="form-check-input mt-0 fs-4" type="radio" name="resposta" value="{{$r->id}}" required>
+                            <input type="hidden" name="alternativa_{{$key}}" value="{{$r->id}}">
+                            <label for="home_radio_{{$key}}" class="w-100 cursor-pointer d-block">
+                                <div class="input-group mb-3 hover-scale pointer">
+                                    <span class="input-group-text fw-bold fs-4">{{$letras[$key]}}</span>
+                                    <div 
+                                        class="form-control fs-4 d-flex align-items-center
+                                        {{isset($questao->respAnt) && $r->id == 0 ? 'is-valid' : ''}}
+                                        {{isset($questao->respAnt) && $questao->respAnt != 0 && $questao->respAnt == $r->id ? 'is-invalid' : ''}}
+                                        " 
+                                        style="cursor: pointer !important; background-color: #fff;"
+                                    >
+                                        {{$r->alternativa}}
                                     </div>
-                                @endif
-                            </div>
+                                    <div class="input-group-text">
+                                        <input class="form-check-input mt-0 fs-4" type="radio" name="resposta" id="home_radio_{{$key}}" value="{{$r->id}}" required style="cursor: pointer;">
+                                    </div>
+                                </div>
+                            </label>
                         @endforeach
                     </form>
                 </div>
