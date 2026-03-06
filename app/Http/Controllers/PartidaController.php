@@ -34,7 +34,12 @@ class PartidaController extends Controller
 
         if($request->all()){
             // Havendo request [POST] grava resposta dada na questao
-            $resposta_id = $this->partida->questoes->find($request->questao)->respAnt = $request->all('resposta')['resposta'];
+            $questaoRespondida = $this->partida->questoes->find($request->questao);
+            if (! $questaoRespondida) {
+                return redirect()->route('partida.index');
+            }
+
+            $resposta_id = $questaoRespondida->respAnt = $request->all('resposta')['resposta'];
 
             //Atualiza Placar
             $this->partida->atualizaPlacar();
@@ -47,6 +52,11 @@ class PartidaController extends Controller
 
         //Define questão a ser apresentada
         $questao = $this->partida->defineQuestao($request->questao);
+        if (! $questao) {
+            $request->session()->forget('partida');
+
+            return redirect()->route('partida.index')->with('status', 'Não foi possível iniciar a partida. Verifique se existem questões suficientes e aprovadas.');
+        }
 
         //Grava a partida em sessão
         $request->session()->put('partida', $this->partida);

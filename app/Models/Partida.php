@@ -30,7 +30,7 @@ class Partida extends Model
 
         $idQuestoesPartida = [];
         // Sorteia as Questões da Partida
-        for ($i = 0; $i < env('APP_NUMERO_QUESTOES_PARTIDA'); $i++) { 
+        for ($i = 0; $i < max((int) config('app.numero_questoes_partida', 20), 0); $i++) {
 
             // Para as cinco primeiras Questões da partida
             if ($i < 5) {
@@ -43,13 +43,12 @@ class Partida extends Model
             }
 
             // Verifica Questão ( Se é de um Administraddor, se tem alternativas suficientes e se está aprovada)
-            if ($questao->verifica()) {
+            if ($questao && $questao->verifica()) {
                 $idQuestoesPartida[] = $questao->id;
                 $this->questoes[] = $questao;
             } else {
                 $i--;
             }
-
         }
 
         //Percorre as questões e monta as alternativas
@@ -71,8 +70,20 @@ class Partida extends Model
     }
 
     public function defineQuestao($questao_id){
+        if ($this->questoes->isEmpty()) {
+            $this->indice = 0;
+            $this->qAnt = null;
+            $this->qPost = null;
+
+            return null;
+        }
+
         //Define a questão, caso a partida acabe de ser criada pega a primeira do Array questoes
-        $questao = $this->questoes->find($questao_id ? $questao_id : $this->questoes[0]->id);
+        $questao = $questao_id ? $this->questoes->find($questao_id) : $this->questoes->first();
+
+        if (! $questao) {
+            $questao = $this->questoes->first();
+        }
         
         //Pega o indice da questao atual
         $indice = $this->indice = array_search( $questao->id, $this->questoes->pluck('id')->toArray() );
@@ -90,9 +101,10 @@ class Partida extends Model
         //Primeira
         }elseif($indice == 0){
             $this->qAnt = null;
-            $this->qPost = $this->questoes[$indice +1];
+            $this->qPost = $this->questoes[$indice +1] ?? null;
 
         }
+
         //Retorna a questão atual
         return $questao;
 

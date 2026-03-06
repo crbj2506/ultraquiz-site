@@ -43,6 +43,8 @@ return [
 
     'debug' => (bool) env('APP_DEBUG', false),
 
+    'numero_questoes_partida' => (int) env('APP_NUMERO_QUESTOES_PARTIDA', 20),
+
     /*
     |--------------------------------------------------------------------------
     | Application URL
