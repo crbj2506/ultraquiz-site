@@ -25,29 +25,38 @@ class Partida extends Model
             }
         }
     }
-    public function criar(){ // MELHORAR // Verificar se tem questões suficientes para a partida antes do loop ou fazer escape com a informação
+    public function criar(){
         $this->questoes = new Collection();
+        $num_questoes = max((int) config('app.numero_questoes_partida', 20), 0);
+
+        if ($num_questoes <= 0) {
+            $this->atualizaPlacar();
+            return;
+        }
 
         $idQuestoesPartida = [];
-        // Sorteia as Questões da Partida
-        for ($i = 0; $i < max((int) config('app.numero_questoes_partida', 20), 0); $i++) {
 
-            // Para as cinco primeiras Questões da partida
-            if ($i < 5) {
-                // Sorteia uma Questão das 10 mais fáceis (dentro da função), não recentes (dentro da função), que ainda não estejam na partida
-                $questao = Questao::facil()->whereNotIn('id', $idQuestoesPartida)->get()->shuffle()->first();
+        // 1. Traz as fáceis em um único lote (traz a mais para poder sortear 5)
+        $faceis = Questao::facil()->limit(15)->get()->filter(function($q) {
+            return $q->verifica();
+        })->shuffle();
 
-            // Para as demais posições 
-            } else {
-                $questao = Questao::aleatoria()->whereNotIn('id', $idQuestoesPartida)->get()->shuffle()->first();
-            }
+        $qtdFaceis = min(5, $num_questoes);
+        foreach ($faceis->take($qtdFaceis) as $q) {
+            $idQuestoesPartida[] = $q->id;
+            $this->questoes->push($q);
+        }
 
-            // Verifica Questão ( Se é de um Administraddor, se tem alternativas suficientes e se está aprovada)
-            if ($questao && $questao->verifica()) {
-                $idQuestoesPartida[] = $questao->id;
-                $this->questoes[] = $questao;
-            } else {
-                $i--;
+        // 2. Completa o restante com aleatórias usando um único lote
+        $falta = $num_questoes - count($idQuestoesPartida);
+        if ($falta > 0) {
+            $aleatorias = Questao::aleatoria()->limit($falta * 3)->get()->filter(function($q) use ($idQuestoesPartida) {
+                return !in_array($q->id, $idQuestoesPartida) && $q->verifica();
+            })->shuffle();
+
+            foreach ($aleatorias->take($falta) as $q) {
+                $idQuestoesPartida[] = $q->id;
+                $this->questoes->push($q);
             }
         }
 
@@ -58,11 +67,11 @@ class Partida extends Model
             $respostaCorreta->id = 0;
             $respostaCorreta->alternativa = $questao->resposta;
             // Insere 4 respostas aleatórias como alternativas
-            $this->questoes[$indice]->respostas = $this->questoes[$indice]->respostas->shuffle()->take(4);
+            $questao->respostas = $questao->respostas->shuffle()->take(4);
             // Insere a resposta Correta como alternativa
-            $this->questoes[$indice]->respostas[] = $respostaCorreta; 
+            $questao->respostas->push($respostaCorreta); 
             // Emparalha as alternativas
-            $this->questoes[$indice]->respostas = $this->questoes[$indice]->respostas->shuffle();
+            $questao->respostas = $questao->respostas->shuffle();
         }
 
         //Inicializa Placar

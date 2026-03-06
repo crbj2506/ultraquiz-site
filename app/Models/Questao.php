@@ -59,14 +59,15 @@ class Questao extends Model
     }
     public function verifica(){
 
-        // Verifica se o criador da questão é Administrador // MELHORAR //
-        $verificada = $this->where('id','=',$this->id)->where('user_id','=','1')->get()->count();
+        // Verifica se o criador da questão é Administrador através do relacionamento de permissões
+        $user = $this->user;
+        $verificada = $user && $user->permissoes()->where('permissao', 'Administrador')->exists();
 
         // Conta a quantidade de Aprovações
-        $aprovadas = $this->verificacoes()->where('aprovada','=','1')->get()->count();
+        $aprovadas = $this->verificacoes()->where('aprovada','=','1')->count();
 
         // conta a quantidade de Reprovações
-        $reprovadas = $this->verificacoes()->where('aprovada','=','0')->get()->count();
+        $reprovadas = $this->verificacoes()->where('aprovada','=','0')->count();
 
         // Verificar se tem no mínimo 4 alternativas
         $alternativas = $this->respostas()->count() > 3 ? true : false;
@@ -79,36 +80,28 @@ class Questao extends Model
     }
 
     public static function aleatoria(){
-        // forma um ARRAY com as últimas perguntas feitas (75%)
-        $recentes = Estatistica::limit(Questao::count()* 0.75)->orderBy('id', 'desc')->distinct()->get()->pluck('questao_id')->all();
-        $questao = Questao::whereNotIn('questoes.id', $recentes)
-            ->limit(30);
+        $limit = max((int)(Questao::count() * 0.75), 1);
+        $recentes = Estatistica::orderBy('id', 'desc')->limit($limit)->pluck('questao_id')->toArray();
+        $questao = static::with(['respostas', 'user.permissoes', 'verificacoes'])
+            ->whereNotIn('questoes.id', $recentes);
         return $questao;
     }
 
     public static function facil(){
-        // forma um ARRAY com as últimas perguntas feitas (75%)
-        $recentes = Estatistica::limit(Questao::count()* 0.75)->orderBy('id', 'desc')->distinct()->get()->pluck('questao_id')->all();
-        $questao = Questao::select('*')->selectRaw(
-            //Taxa Acerto
-            '
-                (
-                SELECT count(*) as respondida FROM questoes q 
-                    join estatisticas e on e.questao_id = q.id where q.id = questoes.id and e.resposta_id is null
-                )
+        $limit = max((int)(Questao::count() * 0.75), 1);
+        $recentes = Estatistica::orderBy('id', 'desc')->limit($limit)->pluck('questao_id')->toArray();
+        $questao = static::with(['respostas', 'user.permissoes', 'verificacoes'])
+            ->select('*')
+            ->selectRaw('
+                (SELECT count(*) as respondida FROM questoes q join estatisticas e on e.questao_id = q.id where q.id = questoes.id and e.resposta_id is null)
                 / 
-                (
-                    SELECT count(*) as respondida FROM questoes q join estatisticas e on e.questao_id = q.id where q.id = questoes.id
-                ) as taxa_acerto, 
-                (
-                    SELECT count(*) as respondida FROM questoes q join estatisticas e on e.questao_id = q.id where q.id = questoes.id
-                ) as respondida
-            '
-        )
+                GREATEST((SELECT count(*) as respondida FROM questoes q join estatisticas e on e.questao_id = q.id where q.id = questoes.id), 1) as taxa_acerto, 
+                (SELECT count(*) as respondida FROM questoes q join estatisticas e on e.questao_id = q.id where q.id = questoes.id) as respondida
+            ')
             ->whereNotIn('questoes.id', $recentes)
             ->having('respondida','>','2')
-            ->orderByDesc('taxa_acerto', 'respondida')
-            ->limit(10);
+            ->orderByDesc('taxa_acerto')
+            ->orderByDesc('respondida');
         return $questao;
     }
 

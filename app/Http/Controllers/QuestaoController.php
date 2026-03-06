@@ -141,25 +141,40 @@ class QuestaoController extends Controller
      */
     public function principal()
     {
-        //
-        // forma um ARRAY com as últimas perguntas feitas
-        $recentes = Estatistica::limit($this->questao->count() - ($this->questao->count() / 4))->orderBy('id', 'desc')->get()->pluck('questao_id')->all();
-        $questao = null;
-        while ($questao == null) {
-            $id = rand(1,$this->questao->count());
-            $questao = $this->questao->find($id);
-            //Descartar questões recentes e com menos de 4 alternativas 
-            if($questao->respostas->count() < 4 || (in_array($id, $recentes))){
-                $questao = null;
-            }
+        $limit = max((int)($this->questao->count() * 0.75), 1);
+        $recentes = Estatistica::orderBy('id', 'desc')->limit($limit)->pluck('questao_id')->toArray();
+
+        // Tenta achar uma questão válida (com alternativas e aprovada)
+        $questoes_candidatas = $this->questao->with(['respostas', 'user.permissoes', 'verificacoes'])
+            ->whereNotIn('id', $recentes)
+            ->has('respostas', '>=', 4)
+            ->inRandomOrder()
+            ->limit(15)
+            ->get();
+
+        $questao = $questoes_candidatas->filter(function($q) { return $q->verifica(); })->first();
+
+        if (!$questao) {
+            // Fallback: ignora recentes
+            $questoes_candidatas = $this->questao->with(['respostas', 'user.permissoes', 'verificacoes'])
+                ->has('respostas', '>=', 4)
+                ->inRandomOrder()
+                ->limit(15)
+                ->get();
+            $questao = $questoes_candidatas->filter(function($q) { return $q->verifica(); })->first();
         }
+
+        if (!$questao) {
+            return view('principal.index', ['questao' => null]);
+        }
+
         $respostaCorreta = new Resposta();
         $respostaCorreta->id = 0;
         $respostaCorreta->alternativa = $questao->resposta;
         //Embaralha todas as alternativas possíveis e pega apenas 4
         $questao->respostas = $questao->respostas->shuffle()->take(4);
         //Insere a alternativa CORRETA
-        $questao->respostas[] = $respostaCorreta;
+        $questao->respostas->push($respostaCorreta);
         //Embaralha as 5 alternativas 
         $questao->respostas = $questao->respostas->shuffle();
         return view('principal.index',['questao' => $questao]);
