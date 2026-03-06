@@ -197,30 +197,20 @@ class QuestaoController extends Controller
         $respostaCorreta->id = 0;
         $respostaCorreta->alternativa = $questao->resposta;
 
-        if($request['alternativa_0']){
-            $respostas[0] = Resposta::where('id',$request['alternativa_0'])->get()[0];
-        }else{
-            $respostas[0] = $respostaCorreta;
-        }
-        if($request['alternativa_1']){
-            $respostas[1] = Resposta::where('id',$request['alternativa_1'])->get()[0];
-        }else{
-            $respostas[1] = $respostaCorreta;
-        }
-        if($request['alternativa_2']){
-            $respostas[2] = Resposta::where('id',$request['alternativa_2'])->get()[0];
-        }else{
-            $respostas[2] = $respostaCorreta;
-        }
-        if($request['alternativa_3']){
-            $respostas[3] = Resposta::where('id',$request['alternativa_3'])->get()[0];
-        }else{
-            $respostas[3] = $respostaCorreta;
-        }
-        if($request['alternativa_4']){
-            $respostas[4] = Resposta::where('id',$request['alternativa_4'])->get()[0];
-        }else{
-            $respostas[4] = $respostaCorreta;
+        // Otimização N+1: Busca todas as respostas passadas de uma única vez no banco.
+        $idsAlternativas = [
+            $request['alternativa_0'], $request['alternativa_1'], 
+            $request['alternativa_2'], $request['alternativa_3'], $request['alternativa_4']
+        ];
+        $respostasBanco = Resposta::whereIn('id', array_filter($idsAlternativas))->get()->keyBy('id');
+
+        for ($i = 0; $i < 5; $i++) {
+            $alt_id = $request["alternativa_$i"];
+            if ($alt_id && isset($respostasBanco[$alt_id])) {
+                $respostas[$i] = clone $respostasBanco[$alt_id];
+            } else {
+                $respostas[$i] = clone $respostaCorreta;
+            }
         }
         $questao->respostas = $respostas;
 
