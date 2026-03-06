@@ -58,9 +58,25 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+            'options' => extension_loaded('pdo_mysql')
+                ? (static function () {
+                    $sslCa = env('MYSQL_ATTR_SSL_CA');
+
+                    if (! $sslCa) {
+                        return [];
+                    }
+
+                    if (defined('Pdo\\Mysql::ATTR_SSL_CA')) {
+                        return [constant('Pdo\\Mysql::ATTR_SSL_CA') => $sslCa];
+                    }
+
+                    if (PHP_VERSION_ID < 80500 && defined('PDO::MYSQL_ATTR_SSL_CA')) {
+                        return [PDO::MYSQL_ATTR_SSL_CA => $sslCa];
+                    }
+
+                    return [];
+                })()
+                : [],
         ],
 
         'pgsql' => [
