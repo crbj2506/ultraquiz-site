@@ -22,7 +22,7 @@ class Rodape extends Component
         $this->questoesCadastradas = \App\Models\Questao::count();
 
         // Obtém automaticamente a versão baseada nos Commits do Git usando Cache para performance
-        $this->versao = \Illuminate\Support\Facades\Cache::rememberForever('sistema_versao', function () {
+        $this->versao = \Illuminate\Support\Facades\Cache::rememberForever('sistema_versao_v3', function () {
             try {
                 $commits = [];
                 $resultCode = null;
@@ -58,7 +58,7 @@ class Rodape extends Component
         });
 
         // Obtém a data do último commit
-        $this->dataVersao = \Illuminate\Support\Facades\Cache::rememberForever('sistema_data_versao', function () {
+        $this->dataVersao = \Illuminate\Support\Facades\Cache::rememberForever('sistema_data_versao_v3', function () {
             try {
                 $data = [];
                 $resultCode = null;
