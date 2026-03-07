@@ -26,14 +26,14 @@ class Rodape extends Component
             try {
                 $commits = [];
                 $resultCode = null;
-                // Força o git a usar o diretório base do projeto e ignora issues de posse (Dubious Ownership)
-                $command = 'git -C ' . escapeshellarg(base_path()) . ' -c safe.directory="*" log --reverse --format="%s"';
+                // Força o git a usar o diretório base do projeto e ignora issues de posse (Dubious Ownership), 
+                // e usa 2>&1 para capturar erros críticos do bash (como command not found) no array $commits.
+                $command = 'git -C ' . escapeshellarg(base_path()) . ' -c safe.directory="*" log --reverse --format="%s" 2>&1';
                 exec($command, $commits, $resultCode);
                 
                 // Se o comando falhou por falta de permissão do www-data ou função exec() desativada
                 if ($resultCode !== 0 || empty($commits)) {
-                    \Illuminate\Support\Facades\Log::warning('Falha ao obter versão git', ['code' => $resultCode]);
-                    return env('SISTEMA_VERSAO', '1.000');
+                    throw new \Exception("Exec Result Code: {$resultCode} | Saída do Bash: " . implode(" ", $commits));
                 }
 
                 $major = 1;
