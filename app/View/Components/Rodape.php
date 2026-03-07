@@ -24,18 +24,24 @@ class Rodape extends Component
         // Obtém automaticamente a versão baseada nos Commits do Git usando Cache para performance
         $this->versao = \Illuminate\Support\Facades\Cache::rememberForever('sistema_versao', function () {
             try {
-                // Pega log de mensagens de commit (do mais antigo para o mais novo)
                 $commits = [];
-                exec('git -c safe.directory="*" log --reverse --format="%s"', $commits);
+                $resultCode = null;
+                // Força o git a usar o diretório base do projeto e ignora issues de posse (Dubious Ownership)
+                $command = 'git -C ' . escapeshellarg(base_path()) . ' -c safe.directory="*" log --reverse --format="%s"';
+                exec($command, $commits, $resultCode);
                 
+                // Se o comando falhou por falta de permissão do www-data ou função exec() desativada
+                if ($resultCode !== 0 || empty($commits)) {
+                    \Illuminate\Support\Facades\Log::warning('Falha ao obter versão git', ['code' => $resultCode]);
+                    return env('SISTEMA_VERSAO', '1.000');
+                }
+
                 $major = 1;
                 $minor = 0;
                 
                 foreach ($commits as $index => $message) {
-                    // O primeiro commit estabelece a base 1.000
                     if ($index === 0) continue;
                     
-                    // Se a mensagem contiver palavras determinantes de Grandes Updates, sobe o Major e zera o Minor
                     if (preg_match('/Atualiza[çc][ãa]o.*LARAVEL|MAJOR|RELEASE|V\d+/i', $message)) {
                         $major++;
                         $minor = 0;
@@ -45,7 +51,8 @@ class Rodape extends Component
                 }
                 
                 return $major . "." . str_pad($minor, 3, '0', STR_PAD_LEFT);
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Erro fatal Versao Git: ' . $e->getMessage());
                 return env('SISTEMA_VERSAO', '1.000');
             }
         });
@@ -53,9 +60,16 @@ class Rodape extends Component
         // Obtém a data do último commit
         $this->dataVersao = \Illuminate\Support\Facades\Cache::rememberForever('sistema_data_versao', function () {
             try {
-                $data = trim(exec('git -c safe.directory="*" log -1 --format=%cd --date=format:"%d/%m/%Y"'));
-                return $data ? $data : env('SISTEMA_DATA', date('d/m/Y'));
-            } catch (\Exception $e) {
+                $data = [];
+                $resultCode = null;
+                $command = 'git -C ' . escapeshellarg(base_path()) . ' -c safe.directory="*" log -1 --format=%cd --date=format:"%d/%m/%Y"';
+                exec($command, $data, $resultCode);
+                
+                if ($resultCode !== 0 || empty($data)) {
+                    return env('SISTEMA_DATA', date('d/m/Y'));
+                }
+                return trim($data[0]);
+            } catch (\Throwable $e) {
                 return env('SISTEMA_DATA', date('d/m/Y'));
             }
         });
