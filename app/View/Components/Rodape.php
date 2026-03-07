@@ -26,7 +26,7 @@ class Rodape extends Component
             try {
                 // Pega log de mensagens de commit (do mais antigo para o mais novo)
                 $commits = [];
-                exec('git log --reverse --format="%s"', $commits);
+                exec('git -c safe.directory="*" log --reverse --format="%s"', $commits);
                 
                 $major = 1;
                 $minor = 0;
@@ -53,7 +53,7 @@ class Rodape extends Component
         // Obtém a data do último commit
         $this->dataVersao = \Illuminate\Support\Facades\Cache::rememberForever('sistema_data_versao', function () {
             try {
-                $data = trim(exec('git log -1 --format=%cd --date=format:"%d/%m/%Y"'));
+                $data = trim(exec('git -c safe.directory="*" log -1 --format=%cd --date=format:"%d/%m/%Y"'));
                 return $data ? $data : env('SISTEMA_DATA', date('d/m/Y'));
             } catch (\Exception $e) {
                 return env('SISTEMA_DATA', date('d/m/Y'));
