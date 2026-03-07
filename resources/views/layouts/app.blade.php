@@ -146,12 +146,9 @@
             </main>
 
             <footer class="footer">
-
+                <x-rodape/>
             </footer>
         </div>
     </body>
-</html>
-
-
 
 
