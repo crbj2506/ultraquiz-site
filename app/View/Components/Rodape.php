@@ -52,8 +52,8 @@ class Rodape extends Component
                 
                 return $major . "." . str_pad($minor, 3, '0', STR_PAD_LEFT);
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('Erro fatal Versao Git: ' . $e->getMessage());
-                return env('SISTEMA_VERSAO', '1.000');
+                // FALLBACK DE DEPURAÇÃO: Retorna o erro na tela para descobrirmos a trava do Linux
+                return "ERRO BASH: " . $e->getMessage();
             }
         });
 
