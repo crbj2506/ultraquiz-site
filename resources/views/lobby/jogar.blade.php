@@ -103,7 +103,13 @@
         const questionArea = document.getElementById('game-question-area');
 
         function connect() {
-            conn = new WebSocket('ws://' + window.location.hostname + ':8090');
+            // Se estiver em HTTPS (PWA/Prod), usa a rota segura do proxy wss://.../app
+            const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+            const wsUrl = window.location.protocol === 'https:' 
+                ? protocol + window.location.hostname + '/app'
+                : protocol + window.location.hostname + ':8090';
+                
+            conn = new WebSocket(wsUrl);
 
             conn.onopen = function() {
                 console.log("Connected to game server!");
