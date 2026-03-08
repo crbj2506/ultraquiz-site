@@ -184,9 +184,12 @@ class LobbyController extends Controller
         $p->criar();
         $questoesData = $p->getState()['questoes_data'];
         
-        // Temporariamente reduz para 3 questões conforme pedido
-        if (count($questoesData) > 3) {
-            $questoesData = array_slice($questoesData, 0, 3);
+        // Determina a quantidade de questões pelo ambiente (10 em Produção, 3 Local)
+        $qtdQuestoes = app()->environment('production') ? 10 : 3;
+
+        // Limita a quantidade de questões
+        if (count($questoesData) > $qtdQuestoes) {
+            $questoesData = array_slice($questoesData, 0, $qtdQuestoes);
         }
 
         $partida->update([
