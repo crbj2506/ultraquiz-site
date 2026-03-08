@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Estatistica;
 use App\Models\Questao;
 use App\Models\Resposta;
+use App\Models\VotoQuestao;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class QuestaoController extends Controller
 {
@@ -252,6 +254,29 @@ class QuestaoController extends Controller
     {
         //
         return view('questao.sugerir');
+    }
+
+    /**
+     * Store a vote (like/dislike) for a question.
+     */
+    public function votar(Request $request, $questaoId)
+    {
+        // O usuário precisa estar logado para votar (incluindo convidados)
+        if (!Auth::check()) {
+            return redirect()->back()->with('error', 'Você precisa estar logado para avaliar uma pergunta.');
+        }
+
+        $request->validate([
+            'voto' => 'required|in:1,-1',
+        ]);
+
+        // Cria ou atualiza o voto do usuário para esta questão
+        VotoQuestao::updateOrCreate(
+            ['questao_id' => $questaoId, 'user_id' => Auth::id()],
+            ['voto' => $request->voto]
+        );
+
+        return redirect()->back()->with('success', 'Obrigado pelo seu feedback!');
     }
 
 }

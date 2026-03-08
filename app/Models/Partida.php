@@ -97,12 +97,31 @@ class Partida extends Model
 
         $idQuestoesPartida = [];
 
-        // 1. Traz as fáceis em um único lote (traz a mais para poder sortear 5)
-        $faceis = Questao::facil()->limit(15)->get()->filter(function($q) {
-            return $q->verifica();
+        // 1. Curadoria Colaborativa: Tenta injetar 1 questão pendente para a comunidade avaliar
+        // Busca 30 questões aleatórias e filtra as que ainda não foram aprovadas (!verifica)
+        // mas que possuem um score de comunidade não tão ruim (> -3)
+        $candidatasMistas = Questao::with(['respostas', 'user.permissoes', 'verificacoes', 'votos'])
+            ->inRandomOrder()->limit(40)->get();
+        
+        $pendentes = $candidatasMistas->filter(function($q) {
+            return \str_word_count($q->pergunta) > 2 // Verificação extra de sanidade
+                   && !$q->verifica() 
+                   && $q->votos()->sum('voto') >= -3 
+                   && $q->respostas()->count() >= 4;
         })->shuffle();
 
-        $qtdFaceis = min(5, $num_questoes);
+        $qtdPendentes = min(1, count($pendentes), $num_questoes); 
+        foreach ($pendentes->take($qtdPendentes) as $q) {
+            $idQuestoesPartida[] = $q->id;
+            $this->questoes->push($q);
+        }
+
+        // 2. Traz as fáceis em um único lote (traz a mais para poder sortear 5)
+        $faceis = Questao::facil()->limit(15)->get()->filter(function($q) use ($idQuestoesPartida) {
+            return !in_array($q->id, $idQuestoesPartida) && $q->verifica();
+        })->shuffle();
+
+        $qtdFaceis = min(5, $num_questoes - count($idQuestoesPartida));
         foreach ($faceis->take($qtdFaceis) as $q) {
             $idQuestoesPartida[] = $q->id;
             $this->questoes->push($q);

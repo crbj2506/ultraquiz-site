@@ -1,147 +1,99 @@
-# JW Quiz
+# JW Quiz - Multiplayer Cooperativo 🏆
 
-Aplicação web de quiz teocrático desenvolvida com Laravel + Vue.
+Aplicação web premium de quiz desenvolvida com **Laravel + Vue + WebSockets (Ratchet)**.
 
-O sistema permite:
-- responder perguntas sem autenticação na página principal;
-- autenticar usuário para jogar uma partida com **20 questões**;
-- registrar estatísticas das respostas;
-- gerenciar conteúdo e permissões (Supervisor/Administrador).
+A plataforma evoluiu e agora oferece uma experiência de **Multiplayer Cooperativo** em tempo real, onde as equipes competem entre si votando simultaneamente, além de manter os tradicionais modos solo com login para estatísticas.
 
-## Tecnologias
+![Página Principal](docs/images/main_page.png)
 
-- PHP 8.2+ (compatível com PHP 8.5)
-- Laravel 12
-- MySQL
-- Vite 6
-- Vue 3
-- Bootstrap 5
+## 🌟 Novidades da Versão Multiplayer
 
-## Requisitos
+- **WebSockets em Tempo Real:** Sincronização ultrarrápida de votos, ranking de equipes e cronômetro através da porta `8090`.
+- **Lobby Cooperativo:** Anfitriões criam salas dinâmicas e convidam amigos usando um **PIN** de 4 dígitos.
+- **Dedo Mais Rápido (Mecânica de Desempate):** Agora a maioria da equipe decide a resposta. Se houver empate na equipe, o jogador que clicou milissegundos primeiro ganha o voto!
+- **Morte Súbita:** Em caso de empate entre a *Equipe A* e a *Equipe B* no placar geral, uma série de "Morte Súbita" com 5 opções entrará em cena automaticamente!
+- **Acesso de Convidados:** Facilidade para amigos jogarem instantaneamente, usando o celular apenas com um Apelido temporário.
 
-- PHP e Composer instalados
-- Node.js e npm instalados
-- MySQL em execução
+![Equipes e Multiplayer](docs/images/lobby_page.png)
 
-## Instalação
+> **Feedback Interativo:** O sistema avisa elegantemente se um jogador tentar entrar em uma partida que já acabou.
+> 
+> ![Validation](docs/images/lobby_error.png)
+
+---
+
+## 📸 Gameplay em Ação
+
+Durante a partida, cada segundo conta. Veja como a interface unificada centraliza a disputa!
+
+**Tela de Jogo (Ao Vivo):**
+![Durante a Partida](docs/images/game_question.png)
+
+**Placar Final Resumido:**
+![Placar Final e Revanche](docs/images/game_final_result.png)
+
+---
+
+## 🛠 Tecnologias
+
+- **Backend:** PHP 8.2+ (Laravel 12) + WebSockets (Ratchet `cboden/ratchet`)
+- **Frontend:** HTML5, Alpine.js/Vue 3, Bootstrap 5 e CSS Vanilla Premium
+- **Database:** MySQL
+- **Assets:** Vite 6
+
+## 🚀 Requisitos e Instalação
 
 1. Clone o repositório e acesse a pasta do projeto.
-2. Instale dependências do backend:
-
+2. Instale as dependências:
 ```bash
 composer install
-```
-
-3. Instale dependências do frontend:
-
-```bash
 npm install
 ```
-
-4. Crie o arquivo de ambiente:
-
+3. Configure o `.env` copiando do `.env.example`:
 ```bash
 cp .env.example .env
-```
-
-No Windows PowerShell, use:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-5. Gere a chave da aplicação:
-
-```bash
 php artisan key:generate
 ```
-
-6. Configure banco no `.env` (`DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`).
-
-7. Execute as migrations:
-
+4. Configure o acesso ao banco em `.env` e rode as migrations:
 ```bash
 php artisan migrate
 ```
 
-## Execução em desenvolvimento
+## ▶️ Como Rodar a Aplicação
 
-Abra dois terminais na raiz do projeto.
+Para o funcionamento completo da plataforma, você precisa iniciar **2 terminais** essenciais:
 
-Terminal 1 (Laravel):
-
+Terminal 1 (Servidor Web Laravel):
 ```bash
-php artisan serve --host=127.0.0.1 --port=8080
+php artisan serve --host=0.0.0.0 --port=8080
 ```
 
-Terminal 2 (Vite):
-
+Terminal 2 (Servidor WebSockets do Multiplayer):
 ```bash
-npm run dev
+php artisan websocket:serve --port=8090
 ```
 
-A aplicação ficará disponível em:
-- Backend: `http://127.0.0.1:8080`
-- Frontend (assets Vite): `http://localhost:5173`
+*Nota: Se você for desenvolver no frontend ativamente, abra um 3º terminal rodando `npm run dev`.*
 
-## Fluxos principais
+Acesse na sua rede: `http://localhost:8080` (ou usando o IP local do PC, como `http://192.168.0.x:8080`).
 
-### 1) Quiz sem login
+---
 
-- Rota principal: `GET /`
-- Permite responder perguntas diretamente.
+## 🎮 Modos de Jogo Disponíveis
 
-### 2) Partida autenticada (20 questões)
+### 1) Partida Cooperativa (Beta)
+- Rota: `GET /lobby`
+- Luta de Equipes: Reúna os amigos na Equipe A e Equipe B. Use a tela principal como "TV" e conectem os smartphones via QR ou PIN.
 
-- Rota: `GET|POST /partida/{questao?}`
-- Requer e-mail verificado e permissão de jogador.
-- Quantidade de questões controlada por `APP_NUMERO_QUESTOES_PARTIDA` no `.env`.
-- Valor padrão atual: `20`.
+### 2) Partida Autenticada Clássica (20 Questões)
+- Rota: `GET /partida`
+- Desafio solo e progressão de XP para jogadores fixos e logados.
 
-## Permissões e áreas administrativas
+### 3) Jogada Contínua e Rápida
+- Rota: `GET /`
+- Respostas rápidas e anônimas para treino.
 
-- **Jogador**: jogar partidas
-- **Supervisor**: gestão de sugestões
-- **Administrador**: CRUD de questões, usuários, permissões, respostas e logs
-
-## Scripts úteis
-
-- Dev frontend:
-
-```bash
-npm run dev
-```
-
-- Build frontend:
-
-```bash
-npm run build
-```
-
-- Limpar cache do Laravel:
-
-```bash
-php artisan optimize:clear
-```
-
-## Problemas comuns
-
-### Erro Rollup no Windows
-
-Se ocorrer erro de módulo opcional do Rollup (ex.: `@rollup/rollup-win32-x64-msvc`):
-
-```powershell
-Remove-Item -Recurse -Force node_modules
-Remove-Item -Force package-lock.json
-npm cache verify
-npm install
-```
-
-### Aviso de depreciação no PHP 8.5
-
-Este projeto já está ajustado para a mudança da constante `PDO::MYSQL_ATTR_SSL_CA` para `Pdo\Mysql::ATTR_SSL_CA` em `config/database.php`.
-
-## Observações
-
-- O projeto usa autenticação padrão do Laravel UI (`Auth::routes`).
-- Para recursos que dependem de permissões, garanta que os usuários/perfis estejam configurados no banco.
+## 👥 Áreas Administrativas
+- **Jogador:** Explorar o quiz e acumular XP nas partidas solo.
+- **Supervisor:** Aceitar ou descartar sugestões da comunidade.
+- **Administrador:** Gerenciamento total de questões, logs e usuários base.

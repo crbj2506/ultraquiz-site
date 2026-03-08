@@ -113,12 +113,33 @@
                             <div class="col-auto">
                                 @if (isset($partida->questoes[$partida->indice]->respAnt))
                                     @php($qProxima = null)
-                                    @foreach($partida->questoes as $key => $questao)
-                                        @if($questao->respAnt === null)
-                                            @php($qProxima = $questao->id)
+                                    @foreach($partida->questoes as $key => $qIter)
+                                        @if($qIter->respAnt === null)
+                                            @php($qProxima = $qIter->id)
                                             @break
                                         @endif
                                     @endforeach
+                                    
+                                    @auth
+                                        <div class="d-inline-flex gap-2 me-3 align-items-center">
+                                            <span class="fs-6 text-muted">Avalie:</span>
+                                            <form action="{{ route('questao.votar', $questao->id) }}" method="POST" class="m-0">
+                                                @csrf
+                                                <input type="hidden" name="voto" value="1">
+                                                <button type="submit" class="btn btn-sm btn-outline-success" title="Gostei da Pergunta">
+                                                    <x-icon-hand-thumbs-up width="18" height="18" />
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('questao.votar', $questao->id) }}" method="POST" class="m-0">
+                                                @csrf
+                                                <input type="hidden" name="voto" value="-1">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Não gostei da Pergunta">
+                                                    <x-icon-hand-thumbs-down width="18" height="18" />
+                                                </button>
+                                            </form>
+                                        </div>
+                                    @endauth
+
                                     <a href="{{ $qProxima ? route('partida.index',['questao' => $qProxima]) : '' }}" class="btn btn-outline-secondary fs-4 @if(!$qProxima) disabled @endif">Próxima</a>
                                     @if ($partida->questoes->pluck('respAnt')->doesntContain(null))
                                         <a href="{{ route('partida.index')}}" class="btn btn-outline-primary ms-2 fs-4">Nova Partida

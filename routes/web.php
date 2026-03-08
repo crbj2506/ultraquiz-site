@@ -20,6 +20,26 @@ Auth::routes(['verify' => true, 'register' => true]);
 Route::get('/', [App\Http\Controllers\QuestaoController::class, 'principal'])->name('questao.principal');
 Route::post('/', [App\Http\Controllers\QuestaoController::class, 'verifica'])->name('questao.verifica');
 
+// Rotas de Autenticação do Google
+Route::get('auth/google', [App\Http\Controllers\Auth\GoogleController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('auth/google/callback', [App\Http\Controllers\Auth\GoogleController::class, 'handleGoogleCallback']);
+
+// Rota de Votação/Curadoria
+Route::post('questao/{questao}/votar', [App\Http\Controllers\QuestaoController::class, 'votar'])->name('questao.votar');
+
+// Rotas do Multiplayer (Lobby e Salas)
+Route::prefix('lobby')->name('lobby.')->group(function () {
+    Route::get('/', [App\Http\Controllers\LobbyController::class, 'index'])->name('index');
+    Route::post('/create', [App\Http\Controllers\LobbyController::class, 'create'])->name('create');
+    Route::post('/join', [App\Http\Controllers\LobbyController::class, 'join'])->name('join');
+    Route::post('/join-guest', [App\Http\Controllers\LobbyController::class, 'joinGuest'])->name('joinGuest');
+    Route::get('/{pin}', [App\Http\Controllers\LobbyController::class, 'sala'])->name('sala');
+    Route::post('/{pin}/equipe', [App\Http\Controllers\LobbyController::class, 'escolherEquipe'])->name('escolherEquipe');
+    Route::post('/{pin}/iniciar', [App\Http\Controllers\LobbyController::class, 'iniciarPartida'])->name('iniciar');
+    Route::get('/{pin}/jogar', [App\Http\Controllers\LobbyController::class, 'jogar'])->name('jogar');
+    Route::get('/{pin}/dados', [App\Http\Controllers\LobbyController::class, 'dadosSala'])->name('dados');
+});
+
 
 //Route::middleware('verified', 'permissao:Jogador,Supervisor,Administrador')
 //    ->name('home')

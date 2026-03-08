@@ -53,6 +53,25 @@
                             </div>
                             <div class="col-auto">
                                 @if (isset($questao->respAnt))
+                                    @auth
+                                        <div class="d-inline-flex gap-2 me-3 align-items-center">
+                                            <span class="fs-6 text-muted">Avalie:</span>
+                                            <form action="{{ route('questao.votar', $questao->id) }}" method="POST" class="m-0">
+                                                @csrf
+                                                <input type="hidden" name="voto" value="1">
+                                                <button type="submit" class="btn btn-sm btn-outline-success" title="Gostei da Pergunta">
+                                                    <x-icon-hand-thumbs-up width="18" height="18" />
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('questao.votar', $questao->id) }}" method="POST" class="m-0">
+                                                @csrf
+                                                <input type="hidden" name="voto" value="-1">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Não gostei da Pergunta">
+                                                    <x-icon-hand-thumbs-down width="18" height="18" />
+                                                </button>
+                                            </form>
+                                        </div>
+                                    @endauth
                                     <a href="{{ route('questao.principal') }}" class="btn btn-sm btn-outline-primary fs-4">Próxima</a>
                                 @else
                                     <button type="submit" class="btn btn-sm btn-outline-success fs-4" form="formQuestao">

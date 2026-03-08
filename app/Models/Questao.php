@@ -48,6 +48,9 @@ class Questao extends Model
     public function estatisticas(){
         return $this->hasMany('App\Models\Estatistica');
     }
+    public function votos(){
+        return $this->hasMany('App\Models\VotoQuestao');
+    }
 
     public function user(){
         return $this->belongsTo('App\Models\User');
@@ -63,16 +66,19 @@ class Questao extends Model
         $user = $this->user;
         $verificada = $user && $user->permissoes()->where('permissao', 'Administrador')->exists();
 
-        // Conta a quantidade de Aprovações
+        // Conta a quantidade de Aprovações antigas (sistema interno)
         $aprovadas = $this->verificacoes()->where('aprovada','=','1')->count();
-
-        // conta a quantidade de Reprovações
         $reprovadas = $this->verificacoes()->where('aprovada','=','0')->count();
+
+        // Novo Sistema de Curadoria Colaborativa:
+        // Soma os votos (+1 ou -1) para ver se a comunidade já validou a questão
+        $scoreComunidade = $this->votos()->sum('voto');
 
         // Verificar se tem no mínimo 4 alternativas
         $alternativas = $this->respostas()->count() > 3 ? true : false;
 
-        if (($verificada || $aprovadas > $reprovadas) && $alternativas) {
+        // É aprovada se: é de um admin, ou tem mais aprovações manuais que reprovações, ou alcançou +10 na curadoria
+        if (($verificada || $aprovadas > $reprovadas || $scoreComunidade >= 10) && $alternativas) {
             return true;
         } else {
             return false;
