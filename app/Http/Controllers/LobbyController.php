@@ -14,6 +14,11 @@ class LobbyController extends Controller
 {
     public function index()
     {
+        // Fluxo de intent: após autenticar, cria sala automaticamente para o anfitrião.
+        if (Auth::check() && session()->pull('lobby_auto_create', false)) {
+            return $this->create();
+        }
+
         // Tela inicial do Lobby: Exibe formulário para digitar o PIN
         // ou botão para Criar Nova Sala (se for anfitrião)
         return view('lobby.index');
@@ -23,6 +28,10 @@ class LobbyController extends Controller
     {
         // Apenas usuários logados podem criar salas
         if (!Auth::check()) {
+            session([
+                'url.intended' => route('lobby.index'),
+                'lobby_auto_create' => true,
+            ]);
             return redirect()->route('login')->with('error', 'Você precisa estar logado para criar uma sala.');
         }
 
@@ -97,6 +106,7 @@ class LobbyController extends Controller
     public function sala($pin)
     {
         if (!Auth::check()) {
+            session(['url.intended' => route('lobby.sala', ['pin' => $pin])]);
             return redirect()->route('login')->with('error', 'Você precisa se identificar antes de entrar na sala.');
         }
 
@@ -105,15 +115,15 @@ class LobbyController extends Controller
                     ->whereIn('status', ['waiting', 'playing'])
                     ->firstOrFail();
 
-        // Se já começou, pula direto para o jogo
-        if ($partida->status === 'playing') {
-            return redirect()->route('lobby.jogar', ['pin' => $pin]);
-        }
-
-        // O usuário já está em alguma equipe desta partida?
+        // Se já começou o jogo e o usuário JÁ está em uma equipe, pula direto
+        // Se ele não estiver em uma equipe, deve ver a tela do lobby para escolher uma (Late Joiner).
         $jogando = JogadorPartida::whereHas('equipe', function($q) use ($partida) {
             $q->where('partida_multiplayer_id', $partida->id);
         })->where('user_id', Auth::id())->first();
+
+        if ($partida->status === 'playing' && $jogando) {
+            return redirect()->route('lobby.jogar', ['pin' => $pin]);
+        }
 
         return view('lobby.sala', [
             'partida' => $partida,
@@ -131,6 +141,22 @@ class LobbyController extends Controller
         // Verifica se a equipe pertence a esta partida
         $equipe = EquipeMultiplayer::where('partida_multiplayer_id', $partida->id)->findOrFail($equipe_id);
 
+        // Lógica de Auto-balanceamento (especialmente para Late Joiners)
+        $equipeFinal = $equipe;
+        $mensagemBalanceamento = null;
+        
+        $outraEquipe = $partida->equipes->where('id', '!=', $equipe_id)->first();
+        if ($outraEquipe) {
+            $qtdEscolhida = $equipe->jogadores->where('user_id', '!=', Auth::id())->count();
+            $qtdOutra = $outraEquipe->jogadores->where('user_id', '!=', Auth::id())->count();
+
+            // Diferença de 2 jogadores: força o balanceamento
+            if ($qtdEscolhida - $qtdOutra >= 2) {
+                $equipeFinal = $outraEquipe;
+                $mensagemBalanceamento = "Para manter o jogo justo, você foi alocado na " . $outraEquipe->nome . "!";
+            }
+        }
+
         // Remove o jogador de outras equipes desta mesma partida (se houver)
         $jogadoresAtuais = JogadorPartida::where('partida_multiplayer_id', $partida->id)
                                          ->where('user_id', Auth::id())
@@ -140,15 +166,22 @@ class LobbyController extends Controller
             $j->delete();
         }
 
-        // Adiciona à nova equipe
+        // Adiciona à equipe final
         JogadorPartida::create([
             'partida_multiplayer_id' => $partida->id,
-            'equipe_multiplayer_id' => $equipe->id,
+            'equipe_multiplayer_id' => $equipeFinal->id,
             'user_id' => Auth::id()
         ]);
 
         if (request()->ajax() || request()->wantsJson()) {
-            return response()->json(['success' => true]);
+            return response()->json([
+                'success' => true,
+                'mensagem' => $mensagemBalanceamento
+            ]);
+        }
+
+        if ($mensagemBalanceamento) {
+            session()->flash('warning', $mensagemBalanceamento);
         }
 
         return redirect()->route('lobby.sala', ['pin' => $pin]);
@@ -184,8 +217,15 @@ class LobbyController extends Controller
         $p->criar();
         $questoesData = $p->getState()['questoes_data'];
         
-        // Determina a quantidade de questões pelo ambiente (10 em Produção, 3 Local)
-        $qtdQuestoes = app()->environment('production') ? 10 : 3;
+        // Determina a quantidade de questões por ambiente, com override opcional.
+        $override = config('app.numero_questoes_multiplayer');
+        if ($override !== null && $override !== '') {
+            $qtdQuestoes = max((int) $override, 0);
+        } else {
+            $qtdQuestoes = app()->environment('production')
+                ? max((int) config('app.numero_questoes_multiplayer_prod', 10), 0)
+                : max((int) config('app.numero_questoes_multiplayer_dev', 3), 0);
+        }
 
         // Limita a quantidade de questões
         if (count($questoesData) > $qtdQuestoes) {
@@ -235,5 +275,15 @@ class LobbyController extends Controller
             'status' => $partida->status,
             'equipes' => $partida->equipes
         ]);
+    }
+
+    public function adminPartidas()
+    {
+        $partidas = PartidaMultiplayer::with(['user', 'equipes.jogadores'])
+            ->whereIn('status', ['waiting', 'playing'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('admin.partidas-ativas', compact('partidas'));
     }
 }

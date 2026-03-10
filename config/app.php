@@ -43,7 +43,15 @@ return [
 
     'debug' => (bool) env('APP_DEBUG', false),
 
-    'numero_questoes_partida' => (int) env('APP_NUMERO_QUESTOES_PARTIDA', 20),
+    // Override global opcional para modo solo. Se vazio, usa os valores por ambiente.
+    'numero_questoes_partida' => env('APP_NUMERO_QUESTOES_PARTIDA'),
+    'numero_questoes_partida_dev' => (int) env('APP_NUMERO_QUESTOES_PARTIDA_DEV', 5),
+    'numero_questoes_partida_prod' => (int) env('APP_NUMERO_QUESTOES_PARTIDA_PROD', 20),
+
+    // Override global opcional para modo multiplayer. Se vazio, usa os valores por ambiente.
+    'numero_questoes_multiplayer' => env('APP_NUMERO_QUESTOES_MULTIPLAYER'),
+    'numero_questoes_multiplayer_dev' => (int) env('APP_NUMERO_QUESTOES_MULTIPLAYER_DEV', 3),
+    'numero_questoes_multiplayer_prod' => (int) env('APP_NUMERO_QUESTOES_MULTIPLAYER_PROD', 10),
 
     /*
     |--------------------------------------------------------------------------

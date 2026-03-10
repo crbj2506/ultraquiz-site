@@ -22,7 +22,7 @@
         @vite(['resources/sass/app.scss', 'resources/js/app.js'])
     </head>
     <body>
-        <div id="app" class="min-vh-100 d-flex flex-column bg-light pb-5">
+        <div id="layout-app" class="min-vh-100 d-flex flex-column bg-light pb-5">
             <nav class="navbar navbar-expand-md navbar-light bg-white bg-opacity-75 sticky-top mt-2 mb-2 mx-2 mx-md-4 rounded-4 shadow-sm" style="backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.4); z-index: 1040;">
                 <div class="container-fluid">
                     <a class="navbar-brand d-none d-sm-block" href="{{ url('/') }}">
@@ -41,6 +41,15 @@
                                     🎮 Modos de Jogo
                                 </a>
                                 <div class="dropdown-menu rounded-4 shadow border-0 p-2" aria-labelledby="jogosDropdown" style="min-width: 260px;">
+                                    <a class="dropdown-item py-2 px-3 rounded-3 bg-primary text-white mb-2" href="{{ route('lobby.index') }}">
+                                        <div class="d-flex align-items-center">
+                                            <span class="fs-4 me-3">👥</span>
+                                            <div>
+                                                <div class="fw-bold">{{ __('Jogar Multiplayer') }}</div>
+                                                <div class="small text-white-50" style="white-space: normal;">Crie ou entre em uma sala</div>
+                                            </div>
+                                        </div>
+                                    </a>
                                     <a class="dropdown-item py-2 px-3 rounded-3" href="{{ route('partida.index') }}">
                                         <div class="d-flex align-items-center">
                                             <span class="fs-4 me-3">👤</span>
@@ -60,11 +69,6 @@
                                         </div>
                                     </a>
                                 </div>
-                            </li>
-                            <li class="nav-item mb-2 mb-md-0">
-                                <a class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm d-flex align-items-center transition-transform" href="{{ route('lobby.index') }}" style="transition: transform 0.2s;">
-                                    <span class="fs-5 me-2">👥</span> {{ __('Jogar Multiplayer') }}
-                                </a>
                             </li>
                         </ul>
 
@@ -134,7 +138,9 @@
             </nav>
 
             <main class="py-1 flex-grow-1">
-                @yield('content')
+                <div id="app">
+                    @yield('content')
+                </div>
             </main>
 
             <footer class="footer">
@@ -143,9 +149,70 @@
         </div>
         @stack('scripts')
         <script>
-            // Registrar PWA Service Worker
+            // Fallback de navbar sem depender do Data API do Bootstrap.
+            (() => {
+                const navReady = () => {
+                    const toggler = document.querySelector('.navbar-toggler');
+                    const collapse = document.getElementById('navbarSupportedContent');
+
+                    if (toggler && collapse) {
+                        toggler.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            const expanded = toggler.getAttribute('aria-expanded') === 'true';
+                            toggler.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+                            collapse.classList.toggle('show');
+                        });
+                    }
+
+                    document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach((trigger) => {
+                        const menu = trigger.nextElementSibling;
+                        if (!menu || !menu.classList.contains('dropdown-menu')) return;
+
+                        trigger.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+
+                            const isOpen = menu.classList.contains('show');
+                            document.querySelectorAll('.dropdown-menu.show').forEach((m) => m.classList.remove('show'));
+                            document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach((t) => t.setAttribute('aria-expanded', 'false'));
+
+                            if (!isOpen) {
+                                menu.classList.add('show');
+                                trigger.setAttribute('aria-expanded', 'true');
+                            }
+                        });
+                    });
+
+                    document.addEventListener('click', () => {
+                        document.querySelectorAll('.dropdown-menu.show').forEach((m) => m.classList.remove('show'));
+                        document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach((t) => t.setAttribute('aria-expanded', 'false'));
+                    });
+                };
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', navReady);
+                } else {
+                    navReady();
+                }
+            })();
+
+            // Em desenvolvimento, remove SW/caches para evitar assets antigos do Vite.
+            // Em produção, mantém o comportamento PWA.
             if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
+                window.addEventListener('load', async () => {
+                    const isProduction = @json(app()->environment('production'));
+
+                    if (!isProduction) {
+                        const regs = await navigator.serviceWorker.getRegistrations();
+                        await Promise.all(regs.map((reg) => reg.unregister()));
+
+                        if ('caches' in window) {
+                            const keys = await caches.keys();
+                            await Promise.all(keys.map((key) => caches.delete(key)));
+                        }
+                        return;
+                    }
+
                     navigator.serviceWorker.register('/sw.js').then(registration => {
                         console.log('PWA ServiceWorker registrado com sucesso:', registration.scope);
                     }).catch(error => {

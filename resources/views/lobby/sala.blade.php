@@ -287,6 +287,9 @@
                 })
                 .then(data => {
                     if (data.success) {
+                        if (data.mensagem) {
+                            alert(data.mensagem);
+                        }
                         // Avisa os outros para atualizarem a lista
                         if (conn && conn.readyState === WebSocket.OPEN) { // Added conn check
                             conn.send(JSON.stringify({

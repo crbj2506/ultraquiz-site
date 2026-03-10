@@ -88,7 +88,14 @@ class Partida extends Model
     }
     public function criar(){
         $this->questoes = new Collection();
-        $num_questoes = max((int) config('app.numero_questoes_partida', 20), 0);
+        $override = config('app.numero_questoes_partida');
+        if ($override !== null && $override !== '') {
+            $num_questoes = max((int) $override, 0);
+        } else {
+            $num_questoes = app()->environment('production')
+                ? max((int) config('app.numero_questoes_partida_prod', 20), 0)
+                : max((int) config('app.numero_questoes_partida_dev', 5), 0);
+        }
 
         if ($num_questoes <= 0) {
             $this->atualizaPlacar();

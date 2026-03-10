@@ -2,6 +2,7 @@ import _ from 'lodash';
 window._ = _;
 
 import 'bootstrap';
+import { Collapse, Dropdown } from 'bootstrap';
 
 /**
  * We'll load the axios HTTP library which allows us to easily issue requests
@@ -13,6 +14,30 @@ import axios from 'axios';
 window.axios = axios;
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+
+// Fallback defensivo para garantir funcionamento do menu principal.
+document.addEventListener('DOMContentLoaded', () => {
+	const navbarCollapseEl = document.getElementById('navbarSupportedContent');
+	const navbarTogglerEl = document.querySelector('.navbar-toggler');
+
+	if (navbarCollapseEl && navbarTogglerEl) {
+		const navbarCollapse = Collapse.getOrCreateInstance(navbarCollapseEl, { toggle: false });
+		navbarTogglerEl.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			navbarCollapse.toggle();
+		});
+	}
+
+	document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach((el) => {
+		const dropdown = Dropdown.getOrCreateInstance(el, { autoClose: true });
+		el.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			dropdown.toggle();
+		});
+	});
+});
 
 /**
  * Echo exposes an expressive API for subscribing to channels and listening

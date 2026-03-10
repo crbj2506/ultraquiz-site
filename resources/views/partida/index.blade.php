@@ -5,6 +5,28 @@
     <div class="row justify-content-center">
         <div class="col mt-3">
             <div class="card">
+                <!-- Patente e Elo -->
+                <div class="card-header bg-light border-bottom border-primary border-opacity-25 py-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-primary bg-gradient text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm fw-bold fs-4" style="width: 50px; height: 50px;">
+                            {{ substr(Auth::user()->titulo, 0, 1) }}
+                        </div>
+                        <div>
+                            <div class="text-uppercase text-primary fw-bold" style="font-size: 0.75rem; letter-spacing: 1px;">Patente Global</div>
+                            <div class="fs-5 fw-bolder text-dark mb-0" style="line-height: 1;">{{ Auth::user()->titulo }}</div>
+                        </div>
+                    </div>
+                    <div style="flex-grow: 1; max-width: 300px;">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted fw-bold" style="font-size: 0.75rem;">Experiência</span>
+                            <span class="text-dark fw-bold" style="font-size: 0.75rem;">{{ Auth::user()->experiencia }} XP</span>
+                        </div>
+                        <div class="progress shadow-sm" style="height: 8px;">
+                            <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar" style="width: {{ min((Auth::user()->experiencia / 2000) * 100, 100) }}%" aria-valuenow="{{ Auth::user()->experiencia }}" aria-valuemin="0" aria-valuemax="2000"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Placar Premium -->
                 <div class="card-header bg-white border-0 py-4">
                     <div class="d-flex flex-wrap justify-content-center gap-3 w-100">

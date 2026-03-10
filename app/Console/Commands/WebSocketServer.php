@@ -429,8 +429,54 @@ class WebSocketServer extends Command implements MessageComponentInterface
                 'votou' => ($votoId !== null)
             ];
 
-            if ($acertou) {
-                \App\Models\EquipeMultiplayer::find($eid)?->increment('pontuacao', 10);
+            $equipeObj = \App\Models\EquipeMultiplayer::with('jogadores.user')->find($eid);
+
+            // Registra cada resposta individual no histórico global (/estatistica).
+            if (!empty($votosEquipe)) {
+                $agora = now();
+                $estatisticas = [];
+
+                foreach ($votosEquipe as $vdata) {
+                    $alternativaId = (int)($vdata['alt'] ?? -1);
+                    if ($alternativaId < 0) {
+                        continue;
+                    }
+
+                    $estatisticas[] = [
+                        'questao_id' => $questaoReal->id,
+                        'resposta_id' => $alternativaId === 0 ? null : $alternativaId,
+                        'created_at' => $agora,
+                        'updated_at' => $agora,
+                    ];
+                }
+
+                if (!empty($estatisticas)) {
+                    \App\Models\Estatistica::insert($estatisticas);
+                }
+            }
+            
+            if ($votoId !== null) {
+                // Item 6: Atualiza estatísticas globais da Questão
+                if ($acertou) {
+                    $questaoReal->increment('acertos');
+                } else {
+                    $questaoReal->increment('erros');
+                }
+
+                // Item 7: Elo Progression System
+                if ($equipeObj) {
+                    foreach ($equipeObj->jogadores as $jogador) {
+                        // is_guest is tracked as a boolean or 1. If not guest, calculate XP.
+                        if ($jogador->user && empty($jogador->user->is_guest)) {
+                            $jogador->user->adicionarExperienciaBaseadoNaQuestao($questaoReal, $acertou);
+                        }
+                    }
+                }
+            }
+
+            // Score clássico da Partida (10 pontos por acerto)
+            if ($acertou && $equipeObj) {
+                $equipeObj->increment('pontuacao', 10);
             }
         }
 

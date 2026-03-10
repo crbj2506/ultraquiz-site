@@ -3,6 +3,17 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
+        "dev:hot:clear": "powershell -NoProfile -Command \"if (Test-Path 'public/hot') { Remove-Item 'public/hot' -Force }\"",
+        "dev:kill": "kill-port 5173 8080 8090",
+        "dev:app": "php -dxdebug.mode=off artisan serve --host=0.0.0.0 --port=8080",
+        "dev:ws": "php -dxdebug.mode=off artisan websocket:serve --port=8090",
+        "dev:ws:quiet": "php -dxdebug.mode=off artisan websocket:serve --port=8090 > storage/logs/websocket.log 2>&1",
+        "dev:stack:quiet": "concurrently -k -n APP,WS -c blue,magenta \"npm:dev:app\" \"npm:dev:ws:quiet\"",
+        "dev:stable": "npm run dev:kill && npm run dev:hot:clear && npm run build && npm run dev:stack:quiet",
+        "dev:all": "concurrently -k -n APP,WS,VITE -c blue,magenta,green \"npm:dev:app\" \"npm:dev:ws\" \"npm:dev\"",
+        "dev:all:quiet": "concurrently -k -n APP,WS,VITE -c blue,magenta,green \"npm:dev:app\" \"npm:dev:ws:quiet\" \"npm:dev\"",
+        "dev:all:refresh": "npm run dev:kill && npm run dev:all",
+        "dev:all:quiet:refresh": "npm run dev:kill && npm run dev:all:quiet",
         "build": "vite build"
     },
     "devDependencies": {
@@ -10,6 +21,8 @@
         "@vitejs/plugin-vue": "^5.0.0",
         "axios": "^1.7.0",
         "bootstrap": "^5.3.3",
+        "concurrently": "^9.2.1",
+        "kill-port": "^2.0.1",
         "laravel-vite-plugin": "^1.0.0",
         "lodash": "^4.17.21",
         "postcss": "^8.4.35",

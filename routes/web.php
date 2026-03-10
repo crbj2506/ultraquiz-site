@@ -118,3 +118,7 @@ Route::middleware('verified', 'permissao:,,Administrador')
 Route::middleware('verified','permissao:,,Administrador')
     ->get('/log', [App\Http\Controllers\LogController::class, 'index'])
     ->name('log.index');
+
+Route::middleware('verified', 'permissao:,,Administrador')
+    ->get('/admin/partidas-ativas', [App\Http\Controllers\LobbyController::class, 'adminPartidas'])
+    ->name('admin.partidas-ativas');

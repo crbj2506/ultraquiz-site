@@ -44,6 +44,18 @@ class PartidaController extends Controller
             //Atualiza Placar
             $this->partida->atualizaPlacar();
 
+            // Elo Progression (Fase 16) e Atualização das Estatísticas da Questão
+            if (auth()->check() && empty(auth()->user()->is_guest)) {
+                $acertou = ($resposta_id == 0);
+                auth()->user()->adicionarExperienciaBaseadoNaQuestao($questaoRespondida, $acertou);
+                
+                if ($acertou) {
+                    $questaoRespondida->increment('acertos');
+                } else {
+                    $questaoRespondida->increment('erros');
+                }
+            }
+
             // Armazena Estatística. Se resposta for 0 (correta), deve-se armazenar NULL por causa do relacionamento 
             if($resposta_id == 0){$resposta_id = null;}
             $estatistica = new Estatistica();
