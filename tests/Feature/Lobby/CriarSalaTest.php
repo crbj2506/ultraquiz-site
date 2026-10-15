@@ -52,6 +52,27 @@ class CriarSalaTest extends TestCase
         $this->assertNull(session('lobby_auto_create'));
     }
 
+    public function test_pin_nunca_repete_o_de_partida_em_andamento_ou_encerrada(): void
+    {
+        $this->criarSala(null, 'playing', 'AAAA');
+        $this->criarSala(null, 'finished', 'BBBB');
+        $usuario = $this->criarUsuario();
+
+        $sequencia = ['AAAA', 'BBBB', 'CCCC'];
+        \Illuminate\Support\Str::createRandomStringsUsing(function ($tamanho) use (&$sequencia) {
+            return $tamanho === 4 && $sequencia ? array_shift($sequencia) : str_repeat('x', $tamanho);
+        });
+
+        try {
+            $this->actingAs($usuario)->post(route('lobby.create'));
+        } finally {
+            \Illuminate\Support\Str::createRandomStringsNormally();
+        }
+
+        $this->assertSame(1, PartidaMultiplayer::where('pin', 'CCCC')->count());
+        $this->assertSame(1, PartidaMultiplayer::where('pin', 'AAAA')->count());
+    }
+
     public function test_index_sem_intencao_apenas_exibe_o_lobby(): void
     {
         $this->actingAs($this->criarUsuario())

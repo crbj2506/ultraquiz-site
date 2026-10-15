@@ -235,7 +235,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
                     if ($pm) {
                         $p = new \App\Models\Partida();
                         $p->criar();
-                        $qs = array_slice($p->getState()['questoes_data'], 0, 3);
+                        $qs = array_slice($p->getState()['questoes_data'], 0, \App\Models\PartidaMultiplayer::quantidadeQuestoes());
                         $pm->update(['status' => 'playing', 'questoes_json' => json_encode($qs), 'pergunta_atual_index' => 0]);
                         foreach ($pm->equipes as $eq) { $eq->update(['pontuacao' => 0]); }
                         $this->salas[$pin]['votos'] = [];
@@ -397,7 +397,11 @@ class WebSocketServer extends Command implements MessageComponentInterface
 
         // Apuração
         $resEquipes = [];
-        $equipesNaSala = array_unique(array_values($this->salas[$pin]['player_equipe']));
+        // Equipes com jogadores conectados, mais as que já votaram (mesmo que o votante tenha saído).
+        $equipesNaSala = array_unique(array_merge(
+            array_values($this->salas[$pin]['player_equipe']),
+            array_keys($this->salas[$pin]['votos_detalhados'] ?? [])
+        ));
         
         echo "[APURAÇÃO] Sala: $pin | Correta: $idCorreto\n";
 
@@ -563,8 +567,22 @@ class WebSocketServer extends Command implements MessageComponentInterface
                         // EMPATE! Adiciona pergunta extra
                         echo "Sala $pin: Empate detectado ($maxScore pts). Ativando MORTE SÚBITA (Rodada " . ($suddenDeathCount + 1) . ")!\n";
                         
-                        $pExtra = \App\Models\Questao::with('respostas')->inRandomOrder()->first();
-                        
+                        $jaUsadas = collect($questoes)->pluck('id')->all();
+                        $pExtra = \App\Models\Questao::with('respostas')
+                            ->whereNotIn('id', $jaUsadas)
+                            ->has('respostas')
+                            ->inRandomOrder()->first();
+
+                        if (!$pExtra) {
+                            echo "Sala $pin: Sem questões disponíveis para a Morte Súbita. Declarando Empate final!\n";
+                            $this->broadcastToSala($pin, [
+                                'type' => 'system',
+                                'message' => '⚖️ Não há mais perguntas para desempate. Fim de jogo com empate!'
+                            ]);
+                            $this->proximaPergunta($pin);
+                            return;
+                        }
+
                         // Pega até 4 respostas erradas e adiciona a correta (ID 0)
                         $opcoesExtra = $pExtra->respostas->shuffle()->take(4)->pluck('id')->toArray();
                         $opcoesExtra[] = 0;
@@ -624,8 +642,21 @@ class WebSocketServer extends Command implements MessageComponentInterface
         // Remove player from any sala they were in
         foreach ($this->salas as $pin => $sala) {
             if ($sala['conns']->contains($conn)) {
+                $userId = $sala['conns'][$conn];
                 $sala['conns']->detach($conn);
                 echo "Conn {$conn->resourceId} left Sala {$pin}\n";
+
+                // Só esquece a equipe do jogador se ele não tiver outra aba conectada na sala.
+                $outraAba = false;
+                foreach ($sala['conns'] as $outra) {
+                    if ($sala['conns'][$outra] === $userId) {
+                        $outraAba = true;
+                        break;
+                    }
+                }
+                if (!$outraAba) {
+                    unset($this->salas[$pin]['player_equipe'][$userId]);
+                }
             }
         }
         echo "Connection {$conn->resourceId} has disconnected\n";

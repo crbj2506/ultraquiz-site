@@ -56,10 +56,11 @@ abstract class TestCase extends BaseTestCase
     protected function criarQuestoesAprovadas(int $quantidade): void
     {
         $admin = $this->criarUsuario();
-        $permissao = Permissao::create(['permissao' => 'Administrador']);
+        $permissao = Permissao::firstOrCreate(['permissao' => 'Administrador']);
         $admin->permissoes()->attach($permissao->id);
 
-        for ($i = 1; $i <= $quantidade; $i++) {
+        $inicio = Questao::count();
+        for ($i = $inicio + 1; $i <= $inicio + $quantidade; $i++) {
             $questao = Questao::create([
                 'pergunta' => "Pergunta de teste numero $i para o quiz",
                 'resposta' => "Resposta correta $i",

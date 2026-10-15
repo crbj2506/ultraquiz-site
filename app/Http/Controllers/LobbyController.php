@@ -35,10 +35,10 @@ class LobbyController extends Controller
             return redirect()->route('login')->with('error', 'Você precisa estar logado para criar uma sala.');
         }
 
-        // Gera um PIN alfanumérico único de 4 caracteres
+        // PIN único entre todas as partidas, pois as buscas por PIN não filtram status.
         do {
             $pin = strtoupper(Str::random(4));
-        } while (PartidaMultiplayer::where('pin', $pin)->where('status', 'waiting')->exists());
+        } while (PartidaMultiplayer::where('pin', $pin)->exists());
 
         // Cria a partida no banco
         $partida = PartidaMultiplayer::create([
@@ -229,14 +229,7 @@ class LobbyController extends Controller
         $questoesData = $p->getState()['questoes_data'];
         
         // Determina a quantidade de questões por ambiente, com override opcional.
-        $override = config('app.numero_questoes_multiplayer');
-        if ($override !== null && $override !== '') {
-            $qtdQuestoes = max((int) $override, 0);
-        } else {
-            $qtdQuestoes = app()->environment('production')
-                ? max((int) config('app.numero_questoes_multiplayer_prod', 10), 0)
-                : max((int) config('app.numero_questoes_multiplayer_dev', 3), 0);
-        }
+        $qtdQuestoes = PartidaMultiplayer::quantidadeQuestoes();
 
         // Limita a quantidade de questões
         if (count($questoesData) > $qtdQuestoes) {

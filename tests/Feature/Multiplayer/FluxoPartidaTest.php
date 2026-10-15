@@ -123,6 +123,7 @@ class FluxoPartidaTest extends ServidorWebSocketTestCase
     public function test_empate_na_ultima_pergunta_ativa_morte_subita(): void
     {
         [$partida, , , , , $c1] = $this->salaComDoisJogadoresConectados();
+        $this->criarQuestoesAprovadas(1);
 
         // 0 x 0 na única pergunta: ninguém votou, então empata.
         $this->chamarPrivado('processarFimDaPergunta', 'ABCD');
@@ -171,6 +172,81 @@ class FluxoPartidaTest extends ServidorWebSocketTestCase
         $this->assertSame(10, $fim['scores'][$a->id]);
         $this->assertSame('finished', PartidaMultiplayer::find($partida->id)->status);
         $this->assertNotEmpty($fim['resultados_finais']);
+    }
+
+    public function test_revanche_usa_a_quantidade_de_questoes_configurada(): void
+    {
+        config(['app.numero_questoes_multiplayer' => 2]);
+        [$partida, , , $u1, $u2, $c1, $c2] = $this->salaComDoisJogadoresConectados();
+        $this->criarQuestoesAprovadas(12);
+
+        $this->enviar($c1, ['action' => 'rematch_vote', 'pin' => 'ABCD']);
+        $this->enviar($c2, ['action' => 'rematch_vote', 'pin' => 'ABCD']);
+
+        $this->assertNotNull($c1->ultima('reset'));
+        $this->assertCount(2, json_decode($partida->fresh()->questoes_json, true));
+    }
+
+    public function test_morte_subita_nao_repete_questao_e_termina_empatada_se_acabarem_as_questoes(): void
+    {
+        [$partida, , , , , $c1] = $this->salaComDoisJogadoresConectados();
+
+        // Só existe a questão já usada: não há como desempatar.
+        $this->chamarPrivado('processarFimDaPergunta', 'ABCD');
+        $this->loop->dispararTimerUnico();
+
+        $this->assertCount(1, json_decode($partida->fresh()->questoes_json, true));
+        $this->assertNotNull($c1->ultima('finalizada'));
+        $this->assertStringContainsString('desempate', $c1->ultima('system')['message']);
+    }
+
+    public function test_morte_subita_escolhe_questao_ainda_nao_usada(): void
+    {
+        [$partida, , , , , $c1] = $this->salaComDoisJogadoresConectados();
+        $this->criarQuestoesAprovadas(3);
+        $usada = json_decode($partida->fresh()->questoes_json, true)[0]['id'];
+
+        $this->chamarPrivado('processarFimDaPergunta', 'ABCD');
+        $this->loop->dispararTimerUnico();
+
+        $questoes = json_decode($partida->fresh()->questoes_json, true);
+        $this->assertCount(2, $questoes);
+        $this->assertNotSame($usada, $questoes[1]['id']);
+    }
+
+    public function test_jogador_desconectado_deixa_de_contar_na_apuracao_e_na_revanche(): void
+    {
+        [$partida, $a, $b, $u1, $u2, $c1, $c2] = $this->salaComDoisJogadoresConectados();
+
+        $this->servidor->onClose($c2);
+        $this->chamarPrivado('processarFimDaPergunta', 'ABCD');
+
+        $resultado = $this->lerPropriedade('salas')['ABCD']['resultados'][0]['equipes'];
+        $this->assertSame([$a->id], array_keys($resultado));
+    }
+
+    public function test_voto_de_quem_saiu_ainda_e_contado(): void
+    {
+        [$partida, $a, $b, $u1, $u2, $c1, $c2] = $this->salaComDoisJogadoresConectados();
+
+        $this->enviar($c2, ['action' => 'votar', 'pin' => 'ABCD', 'alternativa_id' => 0]);
+        $this->servidor->onClose($c2);
+        $this->chamarPrivado('processarFimDaPergunta', 'ABCD');
+
+        $resultado = $this->lerPropriedade('salas')['ABCD']['resultados'][0]['equipes'];
+        $this->assertTrue($resultado[$b->id]['acertou']);
+        $this->assertSame(10, (int) $b->fresh()->pontuacao);
+    }
+
+    public function test_fechar_uma_aba_nao_remove_jogador_com_outra_aba_aberta(): void
+    {
+        [$partida, $a, $b, $u1, $u2, $c1, $c2] = $this->salaComDoisJogadoresConectados();
+        $c3 = $this->conexao(3);
+        $this->entrar($c3, $u2, 'abcd');
+
+        $this->servidor->onClose($c2);
+
+        $this->assertSame($b->id, $this->lerPropriedade('salas')['ABCD']['player_equipe'][$u2->id]);
     }
 
     public function test_revanche_so_reinicia_quando_as_duas_equipes_votam(): void
