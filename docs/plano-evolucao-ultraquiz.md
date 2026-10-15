@@ -24,21 +24,84 @@ A evolução será feita em etapas pequenas e verificáveis, com foco em estabil
 
 ### Etapa 1 — Linha de base e risco
 
-- Revisar cenários críticos já existentes
-- Registrar casos de uso principais e regras de negócio em documentação de testes
-- Validar o comportamento atual antes de qualquer refatoração
-- Garantir que mudanças futuras não quebrem lobby, multiplayer e autenticação
+Meta: congelar o comportamento atual em testes automatizados de caracterização (sem alterar código de produção), para que as Etapas 2 e 3 possam refatorar com segurança. Hoje `tests/` só tem os `ExampleTest` padrão, ou seja, não há nenhuma rede de proteção.
 
-Objetivos:
-- documentar fluxo básico de criação de sala
-- mapear regras de início de partida
-- confirmar comportamentos de late joiner, empate e fim de rodada
-- identificar gaps de regressão antes da refatoração
+Arquivos analisados: [LobbyController.php](../app/Http/Controllers/LobbyController.php) (HTTP) e [WebSocketServer.php](../app/Console/Commands/WebSocketServer.php) (tempo real, ~610 linhas).
+
+#### 1.1 Comportamento atual a ser congelado
+
+**Criação de sala** (`LobbyController@create`)
+- Deslogado: grava `url.intended` e `lobby_auto_create` na sessão e redireciona para `login`; após login, `index` cria a sala automaticamente (consome a flag).
+- Logado: PIN de 4 caracteres maiúsculos, partida `waiting`, `user_id` = anfitrião, equipes "Equipe A" (`primary`) e "Equipe B" (`danger`).
+
+**Entrada** (`join`, `joinGuest`, `sala`)
+- PIN obrigatório de exatamente 4 caracteres; é convertido para maiúsculas.
+- PIN inexistente ou partida `finished`: volta com mensagem de erro.
+- `joinGuest`: cria usuário `is_guest`, nome "{nick} (Convidado)", e-mail `guest_*@ultraquiz.com`, e já faz login.
+- `sala`: exige login; aceita apenas `waiting`/`playing` (senão 404); se `playing` e o usuário já está em equipe, redireciona para `jogar`.
+
+**Escolha de equipe / late joiner** (`escolherEquipe`)
+- Exige login (401 JSON).
+- Se a equipe escolhida tiver 2 ou mais jogadores a mais que a outra (excluindo o próprio usuário), ele é movido para a menor e recebe a mensagem de auto-balance.
+- Remove vínculos anteriores do usuário na partida e cria um novo (trocar de equipe funciona).
+- Responde JSON (`success`, `mensagem`) ou redirect com flash `warning`.
+
+**Início** (`iniciarPartida`)
+- Só o anfitrião; exige ao menos 1 jogador em "Equipe A" e 1 em "Equipe B".
+- Zera pontuações, sorteia questões via `Partida::criar()`, limita pela config (`numero_questoes_multiplayer` > `_prod` (10) / `_dev` (3) por ambiente), grava `questoes_json`, `pergunta_atual_index = 0`, `status = playing`.
+
+**Regras do WebSocket** (ação `join`/`votar`/`start`/`rematch_vote`)
+- Voto da equipe = maioria dos votos; empate interno decidido pelo voto mais rápido. Correta é sempre `id = 0`.
+- Rodada termina por timer (60s) ou quando todos os jogadores conectados votaram.
+- Pontuação: 10 pontos por equipe acertadora; 1 linha em `estatisticas` por voto individual (acerto = `resposta_id` NULL); `acertos`/`erros` da questão incrementam por equipe; XP apenas para não convidados.
+- Intervalo de 8s entre perguntas; ao fim, empate de pontos gera morte súbita (até 3 extras); depois disso, empate final.
+- Revanche: precisa de voto de pelo menos 1 jogador de cada equipe ativa; zera placar e reinicia.
+
+#### 1.2 Lacunas e riscos já identificados (somente registrar; corrigir em etapas posteriores)
+
+| # | Achado | Local | Etapa |
+|---|--------|-------|-------|
+| R1 | O servidor WS confia em `user_id` enviado pelo cliente (sem autenticação) | `onMessage` | 5 |
+| R2 | Ação `start` do WS não verifica se quem enviou é o anfitrião e não valida o DB | `onMessage` | 5 |
+| R3 | `iniciarPartida` não valida o status atual (pode reiniciar partida `playing` ou `finished`) | `LobbyController` | 2 |
+| R4 | `escolherEquipe` não valida o status da partida (aceita `finished`) | `LobbyController` | 2 |
+| R5 | PIN único checado só entre `waiting`; `join` usa `first()` sem filtrar status, podendo achar partida antiga com o mesmo PIN | `create`/`join` | 2/4 |
+| R6 | Revanche usa 3 questões fixas, ignorando a config por ambiente | `rematch_vote` | 3 |
+| R7 | Apuração considera equipes de jogadores desconectados (`player_equipe` nunca é limpo) | `processarFimDaPergunta` | 3/4 |
+| R8 | Morte súbita usa `Questao::inRandomOrder()->first()` sem checar nulo ou repetição | timer de 8s | 3 |
+| R9 | `acertos`/`erros` da questão contam por equipe, enquanto estatísticas contam por voto (divergência intencional?) | `processarFimDaPergunta` | 1 (decidir) |
+| R10 | Validação de entrada do `escolherEquipe` (`equipe_id`) só via `findOrFail`; nickname sem sanitização extra | `LobbyController` | 5 |
+
+#### 1.3 Plano de execução (tarefas)
+
+1. **Preparar o ambiente de teste**: `phpunit.xml` com SQLite em memória (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`); confirmar que as migrations/factories cobrem `partida_multiplayer`, `equipe_multiplayer`, `jogador_partida`, `questoes`, `respostas`, `estatisticas` (hoje só há 3 migrations padrão em `database/migrations/`, então verificar de onde vem o schema e criar factories faltantes: `Questao`, `Resposta`, `PartidaMultiplayer`, `EquipeMultiplayer`, `JogadorPartida`).
+2. **Testes Feature do lobby** em `tests/Feature/Lobby/`:
+   - `CriarSalaTest`: deslogado redireciona e grava intent; logado cria sala + 2 equipes + PIN válido; fluxo `lobby_auto_create`.
+   - `EntrarSalaTest`: PIN inválido/inexistente/finalizada; `joinGuest` cria convidado e loga; `sala` exige login.
+   - `EscolherEquipeTest`: escolha simples, troca de equipe, auto-balance (3x1), não autenticado = 401, equipe de outra partida = 404.
+   - `IniciarPartidaTest`: não anfitrião bloqueado; equipe vazia bloqueada; sucesso grava status, `questoes_json` e respeita limite de questões por ambiente (testar override, prod e dev).
+3. **Testes Unit das regras puras do WS** (documentar sem refatorar ainda): extrair para um teste a lógica de maioria + desempate por tempo, copiando a regra como especificação executável (ela será realocada na Etapa 3 e o teste passa a apontar para o novo service).
+4. **Roteiro manual** (complementa `docs/plano-testes-fase16-atualizado.md`): checklist para o que não é automatizável agora (timer, revanche, morte súbita, reconexão com 2+ navegadores).
+5. **Decidir pontos abertos** com o dono do produto: R9 (contagem por equipe x por voto) e se R3/R4/R5 devem ser tratados como bugs na Etapa 2.
+6. **Executar `php artisan test`** e registrar o resultado base em `docs/` (quantos testes, tempo, falhas conhecidas).
+
+#### 1.4 Critérios de conclusão da Etapa 1
+
+- Suíte `php artisan test` verde, cobrindo todos os itens da seção 1.1 que são HTTP.
+- Nenhuma alteração em `app/` (apenas `tests/`, `database/factories/`, `phpunit.xml` e `docs/`).
+- Tabela de riscos (1.2) revisada e aprovada, com decisão registrada para R9.
+- Roteiro manual de multiplayer atualizado e executado uma vez como linha de base.
+
+#### 1.5 Entregáveis
+
+- `tests/Feature/Lobby/*Test.php` e `tests/Unit/` com as regras de votação.
+- Factories dos modelos multiplayer.
+- Esta seção do plano atualizada com o resultado da linha de base.
 
 ### Etapa 2 — Extrair serviços do lobby
 
 Arquivos principais envolvidos:
-- [app/Http/Controllers/LobbyController.php](C:/projetos/ultraquiz-site.worktrees/code-review-and-improvements/app/Http/Controllers/LobbyController.php)
+- [app/Http/Controllers/LobbyController.php](../app/Http/Controllers/LobbyController.php)
 
 Ações:
 - criar service para criação da sala
@@ -55,7 +118,7 @@ Objetivos:
 ### Etapa 3 — Refatorar o WebSocket em manager de salas
 
 Arquivos principais envolvidos:
-- [app/Console/Commands/WebSocketServer.php](C:/projetos/ultraquiz-site.worktrees/code-review-and-improvements/app/Console/Commands/WebSocketServer.php)
+- [app/Console/Commands/WebSocketServer.php](../app/Console/Commands/WebSocketServer.php)
 
 Ações:
 - criar classes para gerenciamento de salas e jogadores
@@ -85,8 +148,8 @@ Objetivos:
 ### Etapa 5 — Segurança e observabilidade
 
 Arquivos principais envolvidos:
-- [app/Http/Middleware/LogAcesso.php](C:/projetos/ultraquiz-site.worktrees/code-review-and-improvements/app/Http/Middleware/LogAcesso.php)
-- [config/app.php](C:/projetos/ultraquiz-site.worktrees/code-review-and-improvements/config/app.php)
+- [app/Http/Middleware/LogAcesso.php](../app/Http/Middleware/LogAcesso.php)
+- [config/app.php](../config/app.php)
 
 Ações:
 - validar payloads de WebSocket e requisições do lobby
