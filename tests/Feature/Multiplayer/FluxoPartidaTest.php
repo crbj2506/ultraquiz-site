@@ -80,6 +80,22 @@ class FluxoPartidaTest extends ServidorWebSocketTestCase
         $this->assertSame(0, $fim['scores'][$b->id]);
     }
 
+    public function test_voto_em_alternativa_inexistente_ou_invalida_e_ignorado_e_a_rodada_continua(): void
+    {
+        [, , , $u1, $u2, $c1, $c2] = $this->salaComDoisJogadoresConectados();
+
+        foreach ([12345, 'abc', -1, null] as $invalida) {
+            $this->enviar($c1, ['action' => 'votar', 'pin' => 'ABCD', 'user_id' => $u1->id, 'alternativa_id' => $invalida]);
+        }
+
+        $this->assertNull($c2->ultima('voto'));
+        $this->assertNull($c2->ultima('fim_pergunta'));
+
+        // Um voto válido logo depois ainda é aceito.
+        $this->enviar($c1, ['action' => 'votar', 'pin' => 'ABCD', 'user_id' => $u1->id, 'alternativa_id' => '0']);
+        $this->assertNotNull($c2->ultima('voto'));
+    }
+
     public function test_voto_de_quem_nao_pertence_a_uma_equipe_e_ignorado(): void
     {
         [, , , , , $c1] = $this->salaComDoisJogadoresConectados();

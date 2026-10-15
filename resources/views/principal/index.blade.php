@@ -1,6 +1,13 @@
 @extends('layouts.app')
 
 @section('content')
+@if (!$questao)
+<div class="container">
+    <div class="alert alert-info mt-3 fs-5" role="alert">
+        Ainda não há questões disponíveis. Volte em instantes!
+    </div>
+</div>
+@else
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-12 mt-3">
@@ -86,4 +93,5 @@
         </div>
     </div>
 </div>
+@endif
 @endsection

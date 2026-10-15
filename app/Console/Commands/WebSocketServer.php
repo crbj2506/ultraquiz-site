@@ -124,6 +124,11 @@ class WebSocketServer extends Command implements MessageComponentInterface
                 $equipe_id = $this->salas[$pin]['player_equipe'][$user_id] ?? null;
                 if (!$equipe_id) return;
 
+                if (!$this->alternativaValida($pin, $data['alternativa_id'])) {
+                    echo "[VOTAR] Alternativa inválida ignorada. Sala: $pin | User: $user_id\n";
+                    return;
+                }
+
                 // Registra o voto detalhado (Maioria com desempate de tempo)
                 if (!isset($this->salas[$pin]['votos_detalhados'][$equipe_id])) {
                     $this->salas[$pin]['votos_detalhados'][$equipe_id] = [];
@@ -230,6 +235,19 @@ class WebSocketServer extends Command implements MessageComponentInterface
         } catch (\Exception $e) {
             echo "Erro em onMessage: " . $e->getMessage() . "\n";
         }
+    }
+
+    private function alternativaValida($pin, $alternativaId): bool
+    {
+        if (!is_int($alternativaId) && !(is_string($alternativaId) && ctype_digit($alternativaId))) {
+            return false;
+        }
+
+        $pm = \App\Models\PartidaMultiplayer::where('pin', $pin)->first();
+        $questoes = $pm && $pm->questoes_json ? json_decode($pm->questoes_json, true) : null;
+        $opcoes = $questoes[$pm->pergunta_atual_index]['opcoes'] ?? null;
+
+        return is_array($opcoes) && in_array((int) $alternativaId, $opcoes, true);
     }
 
     private function proximaPergunta($pin)
