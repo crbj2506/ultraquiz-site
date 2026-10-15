@@ -188,8 +188,9 @@ Objetivos:
 - melhorar depuração em produção
 - reduzir ruído e aumentar clareza no diagnóstico de incidentes
 
-### Etapa 6 — Cobertura de testes automatizados
+### Etapa 6 — Cobertura de testes automatizados ✅
 
+Concluída. As ações de criação, PIN, late joiner, início com equipe vazia, votos e fim de rodada já eram cobertas pelas etapas anteriores. Foram adicionados: `ReconexaoESincronizacaoTest` (reconexão no meio da rodada recebe o tempo restante sem criar novo timer; reconectar após fechar a aba volta a receber eventos; entrar no intervalo ou em partida encerrada não reinicia rodada; jogador sem equipe não vota; token de outra sala é recusado) e `AutorizacaoLobbyTest` (401 sem login, equipe de outra sala ou de partida encerrada, `equipe_id` inválido, início por não anfitrião ou sem login, `jogar` fora de `playing`, dados de sala inexistente). Nenhum bug novo encontrado. 114 testes, 365 asserções.
 Ações:
 - criar testes para criação de sala e PIN
 - criar testes para late joiner com balanceamento
