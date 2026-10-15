@@ -30,9 +30,9 @@ Route::post('questao/{questao}/votar', [App\Http\Controllers\QuestaoController::
 // Rotas do Multiplayer (Lobby e Salas)
 Route::prefix('lobby')->name('lobby.')->group(function () {
     Route::get('/', [App\Http\Controllers\LobbyController::class, 'index'])->name('index');
-    Route::post('/create', [App\Http\Controllers\LobbyController::class, 'create'])->name('create');
-    Route::post('/join', [App\Http\Controllers\LobbyController::class, 'join'])->name('join');
-    Route::post('/join-guest', [App\Http\Controllers\LobbyController::class, 'joinGuest'])->name('joinGuest');
+    Route::post('/create', [App\Http\Controllers\LobbyController::class,     'create'])->middleware('throttle:10,1')->name('create');
+        Route::post('/join', [App\Http\Controllers\LobbyController::class, 'join'])->middleware('throttle:20,1')->name('join');
+        Route::post('/join-guest', [App\Http\Controllers\LobbyController::class, 'joinGuest'])->middleware('throttle:20,1')->name('joinGuest');
     Route::get('/{pin}', [App\Http\Controllers\LobbyController::class, 'sala'])->name('sala');
     Route::post('/{pin}/equipe', [App\Http\Controllers\LobbyController::class, 'escolherEquipe'])->name('escolherEquipe');
     Route::post('/{pin}/iniciar', [App\Http\Controllers\LobbyController::class, 'iniciarPartida'])->name('iniciar');

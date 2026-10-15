@@ -7,6 +7,7 @@ use App\Models\PartidaMultiplayer;
 use App\Services\Multiplayer\ApuracaoService;
 use App\Services\Multiplayer\GerenciadorSalas;
 use App\Services\Multiplayer\PerguntaService;
+use App\Support\LogMultiplayer as Log;
 use App\Support\WebSocketToken;
 use Illuminate\Console\Command;
 use Ratchet\ConnectionInterface;
@@ -21,6 +22,9 @@ use Ratchet\WebSocket\WsServer;
  */
 class WebSocketServer extends Command implements MessageComponentInterface
 {
+    private const ACOES = ['join', 'votar', 'start', 'rematch_vote'];
+    private const MAX_BYTES_MENSAGEM = 2048;
+
     protected $signature = 'websocket:serve {--port=8090}';
     protected $description = 'Start the WebSocket server for UltraQuiz Multiplayer';
 
@@ -50,6 +54,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
         );
 
         $this->info("WebSocket Server started on port {$port} explicitly bound to all interfaces (0.0.0.0)");
+        Log::info('servidor_iniciado', ['porta' => $port]);
         $this->loop = $server->loop;
         $server->run();
     }
@@ -57,22 +62,23 @@ class WebSocketServer extends Command implements MessageComponentInterface
     public function onOpen(ConnectionInterface $conn)
     {
         $this->clients->offsetSet($conn, null);
-        echo "New connection! ({$conn->resourceId})\n";
+        Log::debug('conexao_aberta', ['conn' => $conn->resourceId]);
     }
 
     public function onMessage(ConnectionInterface $from, $msg)
     {
-        try {
-            $data = json_decode($msg, true);
-            if (!$data || !isset($data['action'])) return;
+        $pin = null;
 
-            $action = $data['action'];
-            $pin = isset($data['pin']) ? strtoupper(trim($data['pin'])) : null;
+        try {
+            $entrada = $this->validarMensagem($from, $msg);
+            if ($entrada === null) return;
+
+            [$action, $pin, $data] = $entrada;
 
             $userId = $this->identificar($from, $action, $pin, $data);
             if ($userId === null) return;
 
-            echo "Mensagem recebida: Action={$action}, PIN={$pin}, User={$userId}\n";
+            Log::debug('mensagem_recebida', ['acao' => $action, 'pin' => $pin, 'user_id' => $userId]);
 
             switch ($action) {
                 case 'join':
@@ -90,42 +96,74 @@ class WebSocketServer extends Command implements MessageComponentInterface
                     $this->votarRevanche($pin, $userId);
                     break;
             }
-        } catch (\Exception $e) {
-            echo "Erro em onMessage: " . $e->getMessage() . "\n";
+        } catch (\Throwable $e) {
+            Log::erro('erro_ao_processar_mensagem', $e, ['pin' => $pin, 'conn' => $from->resourceId]);
+            $from->send(json_encode([
+                'type' => 'erro',
+                'message' => 'Não foi possível processar sua ação. Tente novamente.',
+            ]));
         }
+    }
+
+    /** @return array{0: string, 1: string, 2: array}|null ação, PIN normalizado e dados; null se inválida */
+    private function validarMensagem(ConnectionInterface $from, $msg): ?array
+    {
+        $recusar = function (string $motivo) use ($from) {
+            Log::aviso('mensagem_invalida', ['motivo' => $motivo, 'conn' => $from->resourceId]);
+            return null;
+        };
+
+        if (!is_string($msg) || strlen($msg) > self::MAX_BYTES_MENSAGEM) {
+            return $recusar('tamanho');
+        }
+
+        $data = json_decode($msg, true);
+        if (!is_array($data)) {
+            return $recusar('json');
+        }
+
+        $action = $data['action'] ?? null;
+        if (!is_string($action) || !in_array($action, self::ACOES, true)) {
+            return $recusar('acao');
+        }
+
+        $pin = $data['pin'] ?? null;
+        if (!is_string($pin) || !preg_match('/^[A-Za-z0-9]{4}$/', trim($pin))) {
+            return $recusar('pin');
+        }
+
+        return [$action, strtoupper(trim($pin)), $data];
     }
 
     /**
      * A identidade nunca vem do cliente: no join vem do token assinado,
      * nas demais ações vem da conexão que já passou pelo join.
      */
-    private function identificar(ConnectionInterface $from, string $action, ?string $pin, array $data): ?int
+    private function identificar(ConnectionInterface $from, string $action, string $pin, array $data): ?int
     {
         if ($action === 'join') {
-            $userId = WebSocketToken::validar($data['token'] ?? null, $pin);
+            $token = $data['token'] ?? null;
+            $userId = is_string($token) ? WebSocketToken::validar($token, $pin) : null;
             if ($userId === null) {
-                echo "[AUTH] Join recusado (token ausente, inválido ou expirado). Conn {$from->resourceId}\n";
+                Log::aviso('join_recusado', ['pin' => $pin, 'conn' => $from->resourceId]);
                 $from->send(json_encode(['type' => 'auth_error', 'message' => 'Sessão inválida. Recarregue a página.']));
             }
 
             return $userId;
         }
 
-        $userId = $pin ? $this->salas->usuarioDaConexao($pin, $from) : null;
+        $userId = $this->salas->usuarioDaConexao($pin, $from);
         if ($userId === null) {
-            echo "[AUTH] Ação '$action' ignorada: conexão {$from->resourceId} não autenticada na sala.\n";
+            Log::aviso('acao_nao_autenticada', ['acao' => $action, 'pin' => $pin, 'conn' => $from->resourceId]);
         }
 
         return $userId;
     }
 
-    private function entrar(ConnectionInterface $from, ?string $pin, int $userId): void
+    private function entrar(ConnectionInterface $from, string $pin, int $userId): void
     {
-        if (!$pin) return;
-
         $this->salas->garantir($pin);
         $this->salas->anexar($pin, $from, $userId);
-        echo "User $userId joined/refreshed Sala $pin (Conn {$from->resourceId})\n";
 
         $jogador = JogadorPartida::where('user_id', $userId)
             ->whereHas('partida', fn ($q) => $q->where('pin', $pin))
@@ -133,6 +171,13 @@ class WebSocketServer extends Command implements MessageComponentInterface
         if ($jogador) {
             $this->salas->definirEquipe($pin, $userId, $jogador->equipe_multiplayer_id);
         }
+
+        Log::info('jogador_entrou', [
+            'pin' => $pin,
+            'user_id' => $userId,
+            'equipe_id' => $jogador?->equipe_multiplayer_id,
+            'conn' => $from->resourceId,
+        ]);
 
         $this->salas->broadcast($pin, [
             'type' => 'system',
@@ -173,12 +218,12 @@ class WebSocketServer extends Command implements MessageComponentInterface
 
         $pm = PartidaMultiplayer::where('pin', $pin)->first();
         if (!$this->perguntas->alternativaValida($pm, $alternativaId)) {
-            echo "[VOTAR] Alternativa inválida ignorada. Sala: $pin | User: $userId\n";
+            Log::aviso('voto_invalido', ['pin' => $pin, 'user_id' => $userId]);
             return;
         }
 
         $this->salas->registrarVoto($pin, $equipeId, $userId, $alternativaId);
-        echo "[VOTAR] Sala: $pin | User: $userId | Equipe: $equipeId | Alt: $alternativaId\n";
+        Log::info('voto_registrado', ['pin' => $pin, 'user_id' => $userId, 'equipe_id' => $equipeId]);
 
         $this->salas->broadcast($pin, [
             'type' => 'voto',
@@ -188,7 +233,6 @@ class WebSocketServer extends Command implements MessageComponentInterface
         ]);
 
         if ($this->salas->todosVotaram($pin)) {
-            echo "Todos os jogadores conectados votaram na Sala $pin. Pulando timer!\n";
             $this->processarFimDaPergunta($pin, 'Todos votaram!');
         }
     }
@@ -197,11 +241,11 @@ class WebSocketServer extends Command implements MessageComponentInterface
     {
         $anfitriaoId = PartidaMultiplayer::where('pin', $pin)->value('user_id');
         if ((int) $anfitriaoId !== $userId) {
-            echo "[AUTH] START recusado: User $userId não é o anfitrião da Sala $pin.\n";
+            Log::aviso('start_recusado', ['pin' => $pin, 'user_id' => $userId]);
             return;
         }
 
-        echo "Comando START recebido para Sala $pin. Redirecionando todos para a tela de jogo...\n";
+        Log::info('start_recebido', ['pin' => $pin, 'user_id' => $userId]);
         $this->salas->set($pin, 'status', 'playing');
         $this->salas->broadcast($pin, ['type' => 'redirect']);
     }
@@ -214,7 +258,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
         // Revanche só depois do fim da partida; antes disso reiniciaria um jogo em andamento.
         if (PartidaMultiplayer::where('pin', $pin)->value('status') !== 'finished') return;
 
-        echo "Voto de revanche recebido: Sala $pin, Equipe $equipeId\n";
+        Log::info('revanche_voto', ['pin' => $pin, 'user_id' => $userId, 'equipe_id' => $equipeId]);
         $this->salas->registrarRevanche($pin, $equipeId);
 
         if (!$this->salas->todasAceitaramRevanche($pin)) {
@@ -230,7 +274,6 @@ class WebSocketServer extends Command implements MessageComponentInterface
         $pm = PartidaMultiplayer::with('equipes')->where('pin', $pin)->first();
         if (!$pm) return;
 
-        echo "Revanche aceita por todas as equipes na Sala $pin! Reiniciando...\n";
         $partida = new \App\Models\Partida();
         $partida->criar();
         $questoes = array_slice($partida->getState()['questoes_data'], 0, PartidaMultiplayer::quantidadeQuestoes());
@@ -240,6 +283,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
             $equipe->update(['pontuacao' => 0]);
         }
 
+        Log::info('revanche_iniciada', ['pin' => $pin, 'questoes' => count($questoes)]);
         $this->salas->reiniciarParaRevanche($pin);
         $this->salas->broadcast($pin, ['type' => 'reset']);
         $this->proximaPergunta($pin);
@@ -249,7 +293,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
     {
         $pm = PartidaMultiplayer::where('pin', $pin)->first();
         if (!$pm || !$pm->questoes_json) {
-            echo "Erro: Partida ou questões não encontradas para Sala $pin\n";
+            Log::aviso('partida_sem_questoes', ['pin' => $pin]);
             return;
         }
 
@@ -257,13 +301,12 @@ class WebSocketServer extends Command implements MessageComponentInterface
         $index = $pm->pergunta_atual_index;
 
         if (!$questoes || $index >= count($questoes)) {
-            echo "Partida finalizada ou sem questões para Sala $pin\n";
             $this->finalizarPartida($pin);
             return;
         }
 
         $this->salas->novaRodada($pin);
-        echo "Enviando Pergunta #" . ($index + 1) . " para Sala $pin\n";
+        Log::info('rodada_iniciada', ['pin' => $pin, 'pergunta' => $index + 1, 'total' => count($questoes)]);
         $this->salas->broadcast($pin, $this->perguntas->dados($pm, $questoes, $index));
 
         $this->iniciarTimer($pin, PerguntaService::TEMPO_RODADA);
@@ -284,7 +327,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
         }
 
         $conn->send(json_encode($dados));
-        echo "Sincronizando Pergunta #" . ($index + 1) . " com novo cliente na Sala {$pm->pin}\n";
+        Log::debug('pergunta_sincronizada', ['pin' => $pm->pin, 'pergunta' => $index + 1, 'conn' => $conn->resourceId]);
     }
 
     private function iniciarTimer(string $pin, int $segundos): void
@@ -292,7 +335,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
         $this->cancelarTimer($pin);
 
         $this->salas->set($pin, 'tempo_restante', $segundos);
-        $timer = $this->loop->addPeriodicTimer(1, function () use ($pin) {
+        $timer = $this->loop->addPeriodicTimer(1, $this->protegido($pin, function () use ($pin) {
             $restante = $this->salas->get($pin, 'tempo_restante') - 1;
             $this->salas->set($pin, 'tempo_restante', $restante);
 
@@ -301,7 +344,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
             if ($restante <= 0) {
                 $this->processarFimDaPergunta($pin);
             }
-        });
+        }));
         $this->salas->set($pin, 'timer', $timer);
     }
 
@@ -312,6 +355,27 @@ class WebSocketServer extends Command implements MessageComponentInterface
             $this->loop->cancelTimer($timer);
             $this->salas->remover($pin, 'timer');
         }
+    }
+
+    /**
+     * Callbacks de timer rodam fora do onMessage: uma exceção ali derrubaria o servidor de todas as salas.
+     * Em caso de erro, loga e devolve a sala ao estado "idle", para o próximo join retomar a rodada.
+     */
+    private function protegido(string $pin, callable $fn): callable
+    {
+        return function () use ($pin, $fn) {
+            try {
+                $fn();
+            } catch (\Throwable $e) {
+                Log::erro('erro_no_timer', $e, ['pin' => $pin]);
+                $this->cancelarTimer($pin);
+                $this->salas->set($pin, 'status', 'idle');
+                $this->salas->broadcast($pin, [
+                    'type' => 'erro',
+                    'message' => 'Ocorreu um erro na sala. Recarregue a página para continuar.',
+                ]);
+            }
+        };
     }
 
     private function processarFimDaPergunta(string $pin, string $motivo = 'Tempo esgotado!'): void
@@ -342,6 +406,13 @@ class WebSocketServer extends Command implements MessageComponentInterface
         ];
         $this->salas->set($pin, 'resultados', $resultados);
 
+        Log::info('rodada_apurada', [
+            'pin' => $pin,
+            'pergunta' => $index + 1,
+            'motivo' => $motivo,
+            'scores' => $apuracao['scores'],
+        ]);
+
         $this->salas->broadcast($pin, [
             'type' => 'fim_pergunta',
             'message' => $motivo,
@@ -350,7 +421,10 @@ class WebSocketServer extends Command implements MessageComponentInterface
             'scores' => $apuracao['scores'],
         ]);
 
-        $this->loop->addTimer(PerguntaService::INTERVALO_ENTRE_PERGUNTAS, fn () => $this->avancarPergunta($pin));
+        $this->loop->addTimer(
+            PerguntaService::INTERVALO_ENTRE_PERGUNTAS,
+            $this->protegido($pin, fn () => $this->avancarPergunta($pin))
+        );
     }
 
     /** Passa para a próxima pergunta; se acabaram e há empate, ativa a morte súbita. */
@@ -377,7 +451,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
         $rodadas = $this->perguntas->rodadasDeMorteSubita($questoes);
 
         if ($rodadas >= PerguntaService::MAX_MORTE_SUBITA) {
-            echo "Sala $pin: Limite de Morte Súbita atingido. Declarando Empate final!\n";
+            Log::info('empate_final', ['pin' => $pin, 'motivo' => 'limite_de_desempates']);
             $this->salas->broadcast($pin, [
                 'type' => 'system',
                 'message' => '⚖️ Limite de desempates atingido. Fim de jogo com empate!',
@@ -387,7 +461,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
 
         $extra = $this->perguntas->novaQuestaoDeMorteSubita($questoes);
         if (!$extra) {
-            echo "Sala $pin: Sem questões disponíveis para a Morte Súbita. Declarando Empate final!\n";
+            Log::aviso('empate_final', ['pin' => $pin, 'motivo' => 'sem_questoes_disponiveis']);
             $this->salas->broadcast($pin, [
                 'type' => 'system',
                 'message' => '⚖️ Não há mais perguntas para desempate. Fim de jogo com empate!',
@@ -395,7 +469,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
             return;
         }
 
-        echo "Sala $pin: Empate detectado ($pontuacao pts). Ativando MORTE SÚBITA (Rodada " . ($rodadas + 1) . ")!\n";
+        Log::info('morte_subita_ativada', ['pin' => $pin, 'rodada' => $rodadas + 1, 'pontuacao' => $pontuacao]);
         $questoes[] = $extra;
         $pm->update(['questoes_json' => json_encode($questoes)]);
 
@@ -411,13 +485,17 @@ class WebSocketServer extends Command implements MessageComponentInterface
         if (!$pm) return;
 
         $maxima = $pm->equipes->max('pontuacao');
+        $vencedoras = $pm->equipes->where('pontuacao', $maxima)->pluck('id')->toArray();
+        $placar = $pm->equipes->pluck('pontuacao', 'id')->toArray();
+
+        Log::info('partida_finalizada', ['pin' => $pin, 'vencedoras' => $vencedoras, 'scores' => $placar]);
 
         $this->salas->broadcast($pin, [
             'type' => 'finalizada',
             'message' => 'Fim de jogo!',
             'resultados_finais' => $this->salas->get($pin, 'resultados', []),
-            'scores' => $pm->equipes->pluck('pontuacao', 'id')->toArray(),
-            'winners' => $pm->equipes->where('pontuacao', $maxima)->pluck('id')->toArray(),
+            'scores' => $placar,
+            'winners' => $vencedoras,
         ]);
 
         $pm->update(['status' => 'finished']);
@@ -427,12 +505,12 @@ class WebSocketServer extends Command implements MessageComponentInterface
     {
         $this->clients->offsetUnset($conn);
         $this->salas->desconectar($conn);
-        echo "Connection {$conn->resourceId} has disconnected\n";
+        Log::debug('conexao_fechada', ['conn' => $conn->resourceId]);
     }
 
     public function onError(ConnectionInterface $conn, \Exception $e)
     {
-        echo "An error has occurred: {$e->getMessage()}\n";
+        Log::erro('erro_de_conexao', $e, ['conn' => $conn->resourceId]);
         $conn->close();
     }
 }

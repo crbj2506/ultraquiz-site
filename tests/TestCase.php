@@ -15,6 +15,35 @@ abstract class TestCase extends BaseTestCase
 {
     use CreatesApplication;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Captura os logs do multiplayer em memória, sem escrever arquivo.
+        config(['logging.channels.multiplayer' => [
+            'driver' => 'monolog',
+            'handler' => \Monolog\Handler\TestHandler::class,
+        ]]);
+    }
+
+    /** Logs do multiplayer: lista de [nivel, mensagem, contexto], opcionalmente filtrada por nível. */
+    protected function logsMultiplayer(?string $nivel = null): array
+    {
+        $handler = \Illuminate\Support\Facades\Log::channel('multiplayer')->getLogger()->getHandlers()[0];
+
+        $registros = array_map(
+            fn ($r) => ['nivel' => strtolower($r->level->getName()), 'mensagem' => $r->message, 'contexto' => $r->context],
+            $handler->getRecords()
+        );
+
+        return $nivel ? array_values(array_filter($registros, fn ($r) => $r['nivel'] === $nivel)) : $registros;
+    }
+
+    protected function eventosLogados(?string $nivel = null): array
+    {
+        return array_column($this->logsMultiplayer($nivel), 'mensagem');
+    }
+
     protected function criarUsuario(array $attrs = []): User
     {
         return User::factory()->create($attrs);

@@ -70,6 +70,14 @@ return [
             'days' => 14,
         ],
 
+        // Eventos do multiplayer (lobby e WebSocket), com contexto estruturado por sala e usuário.
+        'multiplayer' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/multiplayer.log'),
+            'level' => env('MULTIPLAYER_LOG_LEVEL', 'info'),
+            'days' => 30,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

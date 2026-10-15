@@ -12,6 +12,7 @@ use App\Services\Lobby\EntradaSalaService;
 use App\Services\Lobby\EscolhaEquipeService;
 use App\Services\Lobby\InicioPartidaService;
 use App\Services\Lobby\LobbyException;
+use App\Support\LogMultiplayer;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -48,6 +49,7 @@ class LobbyController extends Controller
         }
 
         $partida = $this->criacaoSala->criar(Auth::id());
+        LogMultiplayer::info('sala_criada', ['pin' => $partida->pin, 'user_id' => Auth::id(), 'ip' => request()->ip()]);
 
         return redirect()->route('lobby.sala', ['pin' => $partida->pin]);
     }
@@ -59,6 +61,7 @@ class LobbyController extends Controller
         try {
             $this->entradaSala->localizar($pin, 'Ops! Esta partida já foi encerrada e não aceita mais jogadores.');
         } catch (LobbyException $e) {
+                        LogMultiplayer::aviso('pin_nao_encontrado', ['pin' => $pin, 'ip' => $request->ip()]);
             return redirect()->back()->with('error', $e->getMessage());
         }
 
@@ -79,6 +82,7 @@ class LobbyController extends Controller
         try {
             $this->entradaSala->localizar($pin, 'Ops! Esta partida já foi encerrada.');
         } catch (LobbyException $e) {
+                        LogMultiplayer::aviso('pin_nao_encontrado', ['pin' => $pin, 'ip' => $request->ip()]);
             return redirect()->back()->with('error', $e->getMessage());
         }
 
@@ -86,6 +90,7 @@ class LobbyController extends Controller
 
         // Loga o convidado e redireciona
         Auth::login($user);
+        LogMultiplayer::info('convidado_criado', ['pin' => $pin, 'user_id' => $user->id, 'ip' => $request->ip()]);
 
         return redirect()->route('lobby.sala', ['pin' => $pin]);
     }
@@ -137,6 +142,8 @@ class LobbyController extends Controller
             return $this->escolhaEquipe->escolher($partida->load('equipes.jogadores'), $equipe->load('jogadores'), Auth::id());
         });
 
+        LogMultiplayer::info('equipe_escolhida', ['pin' => $partida->pin, 'user_id' => Auth::id(), 'equipe_id' => (int) $request->equipe_id]);
+
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -165,10 +172,13 @@ class LobbyController extends Controller
                 $this->inicioPartida->iniciar($partida);
             });
         } catch (LobbyException $e) {
+            LogMultiplayer::aviso('inicio_recusado', ['pin' => $partida->pin, 'user_id' => Auth::id(), 'motivo' => $e->getMessage(), 'ip' => request()->ip()]);
             return redirect()->back()->with('error', $e->getMessage());
         }
 
-        // Se for AJAX, retorna JSON 
+        LogMultiplayer::info('partida_iniciada', ['pin' => $partida->pin, 'user_id' => Auth::id()]);
+
+        // Se for AJAX, retorna JSON
         if (request()->wantsJson() || request()->ajax()) {
             return response()->json(['success' => true]);
         }

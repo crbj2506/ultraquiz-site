@@ -169,8 +169,9 @@ Objetivos:
 - evitar bugs de race condition no multiplayer
 - tornar o jogo mais previsível em produção
 
-### Etapa 5 — Segurança e observabilidade
+### Etapa 5 — Segurança e observabilidade ✅
 
+Concluída. (1) Canal de log `multiplayer` (`storage/logs/multiplayer.log`, diário, 30 dias, nível em `MULTIPLAYER_LOG_LEVEL`) via `App\Support\LogMultiplayer`; todos os `echo` do `WebSocketServer` foram substituídos por eventos estruturados (`jogador_entrou`, `rodada_iniciada`, `voto_registrado`, `rodada_apurada`, `partida_finalizada` etc.) e o token nunca é logado. (2) Payload do WebSocket validado (tamanho ≤ 2 KB, JSON objeto, ação em whitelist, PIN de 4 caracteres alfanuméricos); inválidos viram aviso `mensagem_invalida` sem resposta. (3) Exceções no `onMessage` e nos timers são capturadas (`erro_ao_processar_mensagem`, `erro_no_timer`): o cliente recebe mensagem genérica e a sala volta a `idle`, sem derrubar o servidor. (4) `throttle` em `lobby/create` (10/min) e `lobby/join` e `join-guest` (20/min). (5) Auditoria do lobby com IP: `sala_criada`, `convidado_criado`, `equipe_escolhida`, `partida_iniciada`, `inicio_recusado`, `pin_nao_encontrado`. 99 testes, 340 asserções. Pendência: `GET /lobby/{pin}/dados` é público e expõe nomes dos jogadores por PIN.
 Arquivos principais envolvidos:
 - [app/Http/Middleware/LogAcesso.php](../app/Http/Middleware/LogAcesso.php)
 - [config/app.php](../config/app.php)
