@@ -71,32 +71,48 @@ Arquivos analisados: [LobbyController.php](../app/Http/Controllers/LobbyControll
 | R8 | Morte súbita usa `Questao::inRandomOrder()->first()` sem checar nulo ou repetição | timer de 8s | 3 |
 | R9 | `acertos`/`erros` da questão contam por equipe, enquanto estatísticas contam por voto (divergência intencional?) | `processarFimDaPergunta` | 1 (decidir) |
 | R10 | Validação de entrada do `escolherEquipe` (`equipe_id`) só via `findOrFail`; nickname sem sanitização extra | `LobbyController` | 5 |
+| R11 | A home (`/`) retorna 500 quando não há nenhuma questão no banco (`principal/index.blade.php` lê `->pergunta` de null) | `resources/views/principal/index.blade.php` | 7 |
+| R12 | `votar` não valida `alternativa_id`: um id inexistente gera erro de FK em `estatisticas`, a exceção é engolida pelo `try/catch` e a rodada fica travada até o timer | `onMessage` | 3/5 |
 
 #### 1.3 Plano de execução (tarefas)
 
-1. **Preparar o ambiente de teste**: `phpunit.xml` com SQLite em memória (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`); confirmar que as migrations/factories cobrem `partida_multiplayer`, `equipe_multiplayer`, `jogador_partida`, `questoes`, `respostas`, `estatisticas` (hoje só há 3 migrations padrão em `database/migrations/`, então verificar de onde vem o schema e criar factories faltantes: `Questao`, `Resposta`, `PartidaMultiplayer`, `EquipeMultiplayer`, `JogadorPartida`).
-2. **Testes Feature do lobby** em `tests/Feature/Lobby/`:
+1. ✅ **Preparar o ambiente de teste**: `phpunit.xml` aponta para um banco MySQL dedicado, `ultraquiz_test` (mesmo servidor/credenciais do `.env`, mas banco separado do de desenvolvimento). SQLite foi descartado porque o app usa SQL exclusivo do MySQL (`GREATEST`, `HAVING` sem `GROUP BY` em `Questao::facil()`). Em vez de factories, os cenários são montados por helpers em `tests/TestCase.php` (`criarSala`, `colocarNaEquipe`, `criarQuestoesAprovadas`).
+2. ✅ **Testes Feature do lobby** em `tests/Feature/Lobby/`:
    - `CriarSalaTest`: deslogado redireciona e grava intent; logado cria sala + 2 equipes + PIN válido; fluxo `lobby_auto_create`.
    - `EntrarSalaTest`: PIN inválido/inexistente/finalizada; `joinGuest` cria convidado e loga; `sala` exige login.
    - `EscolherEquipeTest`: escolha simples, troca de equipe, auto-balance (3x1), não autenticado = 401, equipe de outra partida = 404.
    - `IniciarPartidaTest`: não anfitrião bloqueado; equipe vazia bloqueada; sucesso grava status, `questoes_json` e respeita limite de questões por ambiente (testar override, prod e dev).
-3. **Testes Unit das regras puras do WS** (documentar sem refatorar ainda): extrair para um teste a lógica de maioria + desempate por tempo, copiando a regra como especificação executável (ela será realocada na Etapa 3 e o teste passa a apontar para o novo service).
-4. **Roteiro manual** (complementa `docs/plano-testes-fase16-atualizado.md`): checklist para o que não é automatizável agora (timer, revanche, morte súbita, reconexão com 2+ navegadores).
-5. **Decidir pontos abertos** com o dono do produto: R9 (contagem por equipe x por voto) e se R3/R4/R5 devem ser tratados como bugs na Etapa 2.
-6. **Executar `php artisan test`** e registrar o resultado base em `docs/` (quantos testes, tempo, falhas conhecidas).
+3. ✅ **Testes das regras do WebSocket** em `tests/Feature/Multiplayer/`: executam o `WebSocketServer` real com conexões e loop de eventos falsos (sem abrir porta). Cobrem maioria + desempate por velocidade, pontuação, estatísticas por voto, XP (convidados excluídos), fim antecipado quando todos votam, morte súbita (e o limite de 3), fim de jogo e revanche.
+4. ⏳ **Roteiro manual** (complementa `docs/plano-testes-fase16-atualizado.md`): checklist para o que não é automatizável agora (timer real, reconexão com 2+ navegadores).
+5. ⏳ **Decidir pontos abertos** com o dono do produto: R9 (contagem por equipe x por voto) e se R3/R4/R5/R11/R12 devem ser tratados como bugs nas etapas indicadas.
+6. ✅ **Executar `php artisan test`** e registrar o resultado base (ver 1.6).
 
 #### 1.4 Critérios de conclusão da Etapa 1
 
 - Suíte `php artisan test` verde, cobrindo todos os itens da seção 1.1 que são HTTP.
-- Nenhuma alteração em `app/` (apenas `tests/`, `database/factories/`, `phpunit.xml` e `docs/`).
+- Nenhuma alteração em `app/` (apenas `tests/`, `phpunit.xml` e `docs/`).
 - Tabela de riscos (1.2) revisada e aprovada, com decisão registrada para R9.
 - Roteiro manual de multiplayer atualizado e executado uma vez como linha de base.
 
 #### 1.5 Entregáveis
 
-- `tests/Feature/Lobby/*Test.php` e `tests/Unit/` com as regras de votação.
-- Factories dos modelos multiplayer.
+- `tests/Feature/Lobby/*Test.php` e `tests/Feature/Multiplayer/*Test.php` (com o harness `ServidorWebSocketTestCase`).
+- Helpers de cenário em `tests/TestCase.php`.
 - Esta seção do plano atualizada com o resultado da linha de base.
+
+#### 1.6 Resultado da linha de base
+
+Como executar (requer MySQL local ativo; o banco `ultraquiz_test` é recriado/migrado pelos próprios testes):
+
+```powershell
+php -r "(new PDO('mysql:host=127.0.0.1','root','SENHA'))->exec('CREATE DATABASE IF NOT EXISTS ultraquiz_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');"
+$env:XDEBUG_MODE='off'   # opcional: evita lentidão do Xdebug
+php artisan test
+```
+
+Resultado em 15/10/2026: **48 testes, 151 asserções, todos passando (~6 s)**.
+
+Pendente para fechar a Etapa 1: itens 4 e 5 da seção 1.3.
 
 ### Etapa 2 — Extrair serviços do lobby
 
