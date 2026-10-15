@@ -69,7 +69,7 @@ Arquivos analisados: [LobbyController.php](../app/Http/Controllers/LobbyControll
 | R6 ✅ | Revanche usa 3 questões fixas, ignorando a config por ambiente | `rematch_vote` | 3 |
 | R7 ✅ | Apuração considera equipes de jogadores desconectados (`player_equipe` nunca é limpo) | `processarFimDaPergunta` | 3/4 |
 | R8 ✅ | Morte súbita usa `Questao::inRandomOrder()->first()` sem checar nulo ou repetição | timer de 8s | 3 |
-| R9 | `acertos`/`erros` da questão contam por equipe, enquanto estatísticas contam por voto (divergência intencional?) | `processarFimDaPergunta` | 1 (decidir) |
+| R9 ✅ | `acertos`/`erros` da questão contam por equipe, enquanto estatísticas contam por voto (divergência intencional?) | `processarFimDaPergunta` | 1 (decidido: a dificuldade para seleção e XP vem da tabela `estatisticas`, um registro por resposta individual; `acertos`/`erros` seguem sendo gravados, mas não decidem mais o XP) |
 | R10 ✅ | Apelido de convidado aceitava HTML (XSS armazenado via `innerHTML` na lista da sala) e `equipe_id` não era validado | `LobbyController`, views `lobby/*` | 5 |
 | R11 ✅ | A home (`/`) retorna 500 quando não há nenhuma questão no banco (`principal/index.blade.php` lê `->pergunta` de null) | `resources/views/principal/index.blade.php` | 7 |
 | R12 ✅ | `votar` não valida `alternativa_id`: um id inexistente gera erro de FK em `estatisticas`, a exceção é engolida pelo `try/catch` e a rodada fica travada até o timer | `onMessage` | 3/5 |
@@ -112,7 +112,7 @@ $env:XDEBUG_MODE='off'   # opcional: evita lentidão do Xdebug
 php artisan test
 ```
 
-Resultado em 15/10/2026: **48 testes, 151 asserções, todos passando (~6 s)**. Após as correções de R3, R4, R11 e R12: **53 testes, 168 asserções, todos passando**. Após a autenticação do WebSocket (R1/R2): **61 testes, 191 asserções, todos passando**. Após a validação de entrada e escape de HTML (R10): **65 testes, 225 asserções, todos passando**. Após R5–R8: **72 testes, 238 asserções, todos passando**.
+Resultado em 15/10/2026: **48 testes, 151 asserções, todos passando (~6 s)**. Após as correções de R3, R4, R11 e R12: **53 testes, 168 asserções, todos passando**. Após a autenticação do WebSocket (R1/R2): **61 testes, 191 asserções, todos passando**. Após a validação de entrada e escape de HTML (R10): **65 testes, 225 asserções, todos passando**. Após R5–R8: **72 testes, 238 asserções, todos passando**. Após R9 (XP pela dificuldade das estatísticas): **73 testes, 239 asserções, todos passando**.
 
 Pendente para fechar a Etapa 1: itens 4 e 5 da seção 1.3.
 

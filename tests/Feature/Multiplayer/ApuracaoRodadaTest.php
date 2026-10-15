@@ -151,6 +151,27 @@ class ApuracaoRodadaTest extends ServidorWebSocketTestCase
         $this->assertSame(0, (int) User::find($convidado->id)->experiencia);
     }
 
+    public function test_xp_usa_a_dificuldade_do_historico_individual_de_estatisticas(): void
+    {
+        $partida = $this->salaEmAndamento();
+        $a = $this->equipe($partida, 'Equipe A');
+        $jogador = $this->colocarNaEquipe($partida, $a);
+        $questaoId = json_decode($partida->questoes_json, true)[0]['id'];
+        $errada = Questao::find($questaoId)->respostas->first()->id;
+
+        // 12 respostas individuais erradas: questão difícil (taxa 0%), mesmo com acertos/erros zerados.
+        for ($i = 0; $i < 12; $i++) {
+            Estatistica::create(['questao_id' => $questaoId, 'resposta_id' => $errada]);
+        }
+
+        $this->prepararEstadoSala('ABCD', [$jogador->id => $a->id],
+            $this->votos([$a->id => [$jogador->id => [0, 1.0]]]));
+
+        $this->chamarPrivado('processarFimDaPergunta', 'ABCD');
+
+        $this->assertSame(5, (int) User::find($jogador->id)->experiencia);
+    }
+
     public function test_fim_da_pergunta_envia_placar_e_resposta_correta_aos_conectados(): void
     {
         $partida = $this->salaEmAndamento();

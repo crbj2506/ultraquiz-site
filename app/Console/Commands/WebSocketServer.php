@@ -397,6 +397,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
 
         // Apuração
         $resEquipes = [];
+        $estatisticasRodada = [];
         // Equipes com jogadores conectados, mais as que já votaram (mesmo que o votante tenha saído).
         $equipesNaSala = array_unique(array_merge(
             array_values($this->salas[$pin]['player_equipe']),
@@ -479,7 +480,6 @@ class WebSocketServer extends Command implements MessageComponentInterface
             // Registra cada resposta individual no histórico global (/estatistica).
             if (!empty($votosEquipe)) {
                 $agora = now();
-                $estatisticas = [];
 
                 foreach ($votosEquipe as $vdata) {
                     $alternativaId = (int)($vdata['alt'] ?? -1);
@@ -487,16 +487,12 @@ class WebSocketServer extends Command implements MessageComponentInterface
                         continue;
                     }
 
-                    $estatisticas[] = [
+                    $estatisticasRodada[] = [
                         'questao_id' => $questaoReal->id,
                         'resposta_id' => $alternativaId === 0 ? null : $alternativaId,
                         'created_at' => $agora,
                         'updated_at' => $agora,
                     ];
-                }
-
-                if (!empty($estatisticas)) {
-                    \App\Models\Estatistica::insert($estatisticas);
                 }
             }
             
@@ -523,6 +519,11 @@ class WebSocketServer extends Command implements MessageComponentInterface
             if ($acertou && $equipeObj) {
                 $equipeObj->increment('pontuacao', 10);
             }
+        }
+
+        // Grava o histórico só depois do XP, para que todas as equipes sejam avaliadas sobre a mesma base.
+        if (!empty($estatisticasRodada)) {
+            \App\Models\Estatistica::insert($estatisticasRodada);
         }
 
         $this->salas[$pin]['resultados'][$index] = [

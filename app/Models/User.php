@@ -89,14 +89,16 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function adicionarExperienciaBaseadoNaQuestao(\App\Models\Questao $questao, bool $acertou)
     {
-        $totalRespostas = $questao->acertos + $questao->erros;
+        // A dificuldade vem do histórico individual (tabela estatisticas), a mesma fonte usada para sortear questões.
+        $totalRespostas = \App\Models\Estatistica::where('questao_id', $questao->id)->count();
         
         $deltaXp = 0;
 
         if ($totalRespostas < 10) {
             $deltaXp = $acertou ? 2 : 0;
         } else {
-            $taxaAcerto = ($questao->acertos / $totalRespostas) * 100;
+            $acertos = \App\Models\Estatistica::where('questao_id', $questao->id)->whereNull('resposta_id')->count();
+            $taxaAcerto = ($acertos / $totalRespostas) * 100;
 
             if ($taxaAcerto > 70) {
                 // Fácil
