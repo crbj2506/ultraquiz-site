@@ -92,6 +92,7 @@
     document.addEventListener("DOMContentLoaded", function() {
         const pin = "{{ $partida->pin }}";
         const userId = "{{ Auth::id() }}";
+        const escapeHtml = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const wsToken = "{{ \App\Support\WebSocketToken::emitir(Auth::id(), $partida->pin) }}";
         
         let conn;
@@ -178,7 +179,7 @@
                                 if (isMe) isMeInThisTeam = true;
                                 htmlLista += `
                                     <li class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                        <span class="fw-bold text-dark">${jogador.user.name}</span>
+                                        <span class="fw-bold text-dark">${escapeHtml(jogador.user.name)}</span>
                                         ${isMe ? `<span class="badge bg-${equipe.cor} rounded-pill">Você</span>` : ''}
                                     </li>
                                 `;
@@ -195,7 +196,7 @@
                                 <input type="hidden" name="equipe_id" value="${equipe.id}">
                                 <button type="submit" class="btn ${isMeInThisTeam ? 'btn-'+equipe.cor : 'btn-outline-'+equipe.cor} fw-bold w-100 choosing-btn" 
                                         ${isMeInThisTeam ? 'disabled' : ''}>
-                                    ${isMeInThisTeam ? 'Sua Equipe' : 'Entrar na ' + equipe.nome}
+                                    ${isMeInThisTeam ? 'Sua Equipe' : 'Entrar na ' + escapeHtml(equipe.nome)}
                                 </button>
                             </form>
                         `;

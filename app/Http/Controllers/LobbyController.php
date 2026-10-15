@@ -74,7 +74,9 @@ class LobbyController extends Controller
     {
         $request->validate([
             'pin' => 'required|string|size:4',
-            'nickname' => 'required|string|max:20'
+            'nickname' => ['required', 'string', 'max:20', 'regex:/^[\pL\pN][\pL\pN ._-]*$/u'],
+        ], [
+            'nickname.regex' => 'O apelido deve conter apenas letras, números, espaço, ponto, hífen ou sublinhado.',
         ]);
 
         $pin = strtoupper($request->pin);
@@ -134,6 +136,8 @@ class LobbyController extends Controller
     public function escolherEquipe(Request $request, $pin)
     {
         if (!Auth::check()) return response()->json(['error' => 'Not Auth'], 401);
+
+        $request->validate(['equipe_id' => 'required|integer']);
 
         $partida = PartidaMultiplayer::where('pin', strtoupper($pin))
             ->whereIn('status', ['waiting', 'playing'])

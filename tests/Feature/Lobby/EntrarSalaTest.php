@@ -66,6 +66,28 @@ class EntrarSalaTest extends TestCase
         $this->assertSame(0, User::where('is_guest', true)->count());
     }
 
+    public function test_convidado_rejeita_apelido_com_html_ou_caracteres_perigosos(): void
+    {
+        $this->criarSala(null, 'waiting', 'ABCD');
+
+        foreach (['<img src=x onerror=alert(1)>', '<b>x</b>', 'a"b', "a'b", 'x&y', '  ', '.inicio'] as $apelido) {
+            $this->post(route('lobby.joinGuest'), ['pin' => 'ABCD', 'nickname' => $apelido])
+                ->assertSessionHasErrors('nickname');
+        }
+        $this->assertSame(0, User::where('is_guest', true)->count());
+    }
+
+    public function test_convidado_aceita_apelidos_comuns_com_acentos(): void
+    {
+        $this->criarSala(null, 'waiting', 'ABCD');
+
+        foreach (['José da Silva', 'Ana_Maria', 'João-2', 'Zeca.99'] as $apelido) {
+            $this->post(route('lobby.joinGuest'), ['pin' => 'ABCD', 'nickname' => $apelido])
+                ->assertSessionHasNoErrors();
+        }
+        $this->assertSame(4, User::where('is_guest', true)->count());
+    }
+
     public function test_convidado_em_sala_inexistente_ou_finalizada_nao_cria_usuario(): void
     {
         $this->criarSala(null, 'finished', 'FIM1');
@@ -108,6 +130,22 @@ class EntrarSalaTest extends TestCase
         $this->criarSala(null, 'playing', 'ABCD');
 
         $this->actingAs($this->criarUsuario())->get(route('lobby.sala', ['pin' => 'ABCD']))->assertOk();
+    }
+
+    public function test_telas_escapam_textos_de_usuarios_antes_de_usar_innerhtml(): void
+    {
+        $partida = $this->criarSala(null, 'playing', 'ABCD');
+        $jogador = $this->colocarNaEquipe($partida, $this->equipe($partida, 'Equipe A'));
+
+        $sala = $this->actingAs($this->criarUsuario())->get(route('lobby.sala', ['pin' => 'ABCD']))->getContent();
+        $jogo = $this->actingAs($jogador)->get(route('lobby.jogar', ['pin' => 'ABCD']))->getContent();
+
+        $this->assertStringContainsString('escapeHtml(jogador.user.name)', $sala);
+        $this->assertStringNotContainsString('${jogador.user.name}', $sala);
+        foreach (['alt.texto', 'res.pergunta', 'res.correta', 'eqRes.voto'] as $campo) {
+            $this->assertStringContainsString("escapeHtml($campo)", $jogo);
+            $this->assertStringNotContainsString('${' . $campo . '}', $jogo);
+        }
     }
 
     public function test_sala_e_jogo_entregam_token_websocket_valido_do_proprio_usuario(): void

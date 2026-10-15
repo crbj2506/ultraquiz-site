@@ -115,6 +115,18 @@ class EscolherEquipeTest extends TestCase
         $this->assertSame(1, JogadorPartida::count());
     }
 
+    public function test_equipe_id_ausente_ou_nao_numerico_retorna_422(): void
+    {
+        $partida = $this->criarSala();
+        $user = $this->criarUsuario();
+        $rota = route('lobby.escolherEquipe', ['pin' => $partida->pin]);
+
+        $this->actingAs($user)->postJson($rota, [])->assertStatus(422);
+        $this->actingAs($user)->postJson($rota, ['equipe_id' => 'abc'])->assertStatus(422);
+        $this->actingAs($user)->postJson($rota, ['equipe_id' => ['1']])->assertStatus(422);
+        $this->assertSame(0, JogadorPartida::count());
+    }
+
     public function test_equipe_de_outra_partida_retorna_404(): void
     {
         $partida = $this->criarSala(null, 'waiting', 'AAAA');

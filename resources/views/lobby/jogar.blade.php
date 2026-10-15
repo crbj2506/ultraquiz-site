@@ -91,6 +91,7 @@
     document.addEventListener("DOMContentLoaded", function() {
         const pin = "{{ $partida->pin }}";
         const userId = "{{ Auth::id() }}";
+        const escapeHtml = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const wsToken = "{{ \App\Support\WebSocketToken::emitir(Auth::id(), $partida->pin) }}";
         const minhaEquipeId = "{{ $minhaEquipeId }}";
         let conn;
@@ -177,7 +178,7 @@
                 col.innerHTML = `
                     <button class="btn btn-outline-primary w-100 py-3 fw-bold alternative-btn shadow-sm" 
                             data-id="${alt.id}" onclick="votoLocal(${alt.id})">
-                        ${alt.texto}
+                        ${escapeHtml(alt.texto)}
                         <div class="voters-area mt-2" id="voters-${alt.id}"></div>
                     </button>
                 `;
@@ -290,14 +291,14 @@
                             ${resArray.map((res, i) => `
                                 <tr>
                                     <td class="text-center fw-bold">${i + 1}</td>
-                                    <td class="text-start small d-none d-md-table-cell">${res.pergunta}</td>
-                                    <td class="text-center d-none d-md-table-cell"><span class="badge bg-success px-2 py-1">${res.correta}</span></td>
+                                    <td class="text-start small d-none d-md-table-cell">${escapeHtml(res.pergunta)}</td>
+                                    <td class="text-center d-none d-md-table-cell"><span class="badge bg-success px-2 py-1">${escapeHtml(res.correta)}</span></td>
                                     ${Object.values(res.equipes || {}).map(eqRes => `
                                         <td class="text-center">
                                             <div class="d-flex flex-column align-items-center">
                                                 <span class="fs-4">${!eqRes.votou ? '➖' : (eqRes.acertou ? '✅' : '❌')}</span>
                                                 <small class="text-muted d-none d-lg-block text-truncate" style="font-size: 0.65rem; max-width: 80px;">
-                                                    ${!eqRes.votou ? 'Não respondeu' : eqRes.voto}
+                                                    ${!eqRes.votou ? 'Não respondeu' : escapeHtml(eqRes.voto)}
                                                 </small>
                                             </div>
                                         </td>
@@ -336,7 +337,7 @@
             alert.className = 'alert alert-danger fixed-top mt-5 mx-auto shadow-lg animate__animated animate__pulse animate__infinite';
             alert.style.width = 'fit-content';
             alert.style.zIndex = '9999';
-            alert.innerHTML = `<h4 class="mb-0 fw-bold">🚀 ${msg}</h4>`;
+            alert.innerHTML = `<h4 class="mb-0 fw-bold">🚀 ${escapeHtml(msg)}</h4>`;
             document.body.appendChild(alert);
             setTimeout(() => alert.remove(), 4000);
         }
