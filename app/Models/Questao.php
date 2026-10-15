@@ -93,10 +93,18 @@ class Questao extends Model
         return $questao;
     }
 
-    public static function facil(){
+    /** Taxa de acerto mínima (0 a 1) para a questão ser considerada fácil. */
+    public const LIMITE_FACIL = 0.7;
+    /** Abaixo desta taxa de acerto a questão é considerada difícil. */
+    public const LIMITE_DIFICIL = 0.4;
+    /** Respostas necessárias para a estatística valer; antes disso a questão é "média". */
+    public const MIN_RESPOSTAS_ESTATISTICA = 3;
+
+    /** Questões fora das mais recentemente respondidas, com taxa_acerto e respondida calculadas. */
+    private static function comTaxaDeAcerto(){
         $limit = max((int)(Questao::count() * 0.75), 1);
         $recentes = Estatistica::orderBy('id', 'desc')->limit($limit)->pluck('questao_id')->toArray();
-        $questao = static::with(['respostas', 'user.permissoes', 'verificacoes'])
+        return static::with(['respostas', 'user.permissoes', 'verificacoes'])
             ->select('*')
             ->selectRaw('
                 (SELECT count(*) as respondida FROM questoes q join estatisticas e on e.questao_id = q.id where q.id = questoes.id and e.resposta_id is null)
@@ -104,11 +112,29 @@ class Questao extends Model
                 GREATEST((SELECT count(*) as respondida FROM questoes q join estatisticas e on e.questao_id = q.id where q.id = questoes.id), 1) as taxa_acerto, 
                 (SELECT count(*) as respondida FROM questoes q join estatisticas e on e.questao_id = q.id where q.id = questoes.id) as respondida
             ')
-            ->whereNotIn('questoes.id', $recentes)
-            ->having('respondida','>','2')
-            ->orderByDesc('taxa_acerto')
-            ->orderByDesc('respondida');
-        return $questao;
+            ->whereNotIn('questoes.id', $recentes);
+    }
+
+    public static function facil(){
+        return static::comTaxaDeAcerto()
+            ->havingRaw('respondida >= ? AND taxa_acerto >= ?', [self::MIN_RESPOSTAS_ESTATISTICA, self::LIMITE_FACIL])
+            ->inRandomOrder();
+    }
+
+    /** Taxa intermediária, ou ainda sem respostas suficientes para classificar. */
+    public static function media(){
+        return static::comTaxaDeAcerto()
+            ->havingRaw(
+                'respondida < ? OR (taxa_acerto >= ? AND taxa_acerto < ?)',
+                [self::MIN_RESPOSTAS_ESTATISTICA, self::LIMITE_DIFICIL, self::LIMITE_FACIL]
+            )
+            ->inRandomOrder();
+    }
+
+    public static function dificil(){
+        return static::comTaxaDeAcerto()
+            ->havingRaw('respondida >= ? AND taxa_acerto < ?', [self::MIN_RESPOSTAS_ESTATISTICA, self::LIMITE_DIFICIL])
+            ->inRandomOrder();
     }
 
     public function taxaAcerto(){

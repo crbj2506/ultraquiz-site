@@ -204,6 +204,10 @@ Objetivos:
 - validar regras importantes automaticamente
 - dar confiança para refatorações futuras
 
+### Extra — Mix de dificuldade das partidas ✅
+
+Concluído. `Questao::facil()`, `media()` e `dificil()` classificam pela taxa de acerto da tabela `estatisticas` (fácil ≥ 70%, difícil < 40%, média no meio ou com menos de 3 respostas). `Partida::criar(?int)` monta 25% fáceis, 50% médias e 25% difíceis (20 = 5/10/5), em ordem crescente; a questão pendente de curadoria conta como média e faixa sem questões é completada com aleatórias. O multiplayer passa a pedir já a quantidade certa (10 = 3/4/3) em vez de cortar as primeiras. 120 testes, 383 asserções.
+
 ### Etapa 7 — Revisão de UX e qualidade de produto
 
 Ações:

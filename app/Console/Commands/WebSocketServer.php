@@ -275,8 +275,8 @@ class WebSocketServer extends Command implements MessageComponentInterface
         if (!$pm) return;
 
         $partida = new \App\Models\Partida();
-        $partida->criar();
-        $questoes = array_slice($partida->getState()['questoes_data'], 0, PartidaMultiplayer::quantidadeQuestoes());
+        $partida->criar(PartidaMultiplayer::quantidadeQuestoes());
+        $questoes = $partida->getState()['questoes_data'];
 
         $pm->update(['status' => 'playing', 'questoes_json' => json_encode($questoes), 'pergunta_atual_index' => 0]);
         foreach ($pm->equipes as $equipe) {

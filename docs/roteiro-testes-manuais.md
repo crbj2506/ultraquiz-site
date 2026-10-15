@@ -42,7 +42,7 @@ Entre com o usuário Jogador e abra `/partida`.
 |---|------|----------|---|
 | 2.1 | Iniciar a partida | Primeira pergunta aparece; placar zerado | ☐ |
 | 2.2 | Contar as perguntas até o fim | Total de **20** (1 pode ser questão pendente de curadoria) | ☐ |
-| 2.3 | Observar a dificuldade | Começa fácil e vai subindo (hoje: até 5 fáceis, depois as demais) | ☐ |
+| 2.3 | Observar a dificuldade | Ordem crescente: 5 fáceis, 10 médias (inclui sem estatística e a pendente de curadoria) e 5 difíceis. Se faltar questão numa faixa, completa com aleatórias | ☐ |
 | 2.4 | Nenhuma pergunta repetida na partida | Sem repetição | ☐ |
 | 2.5 | Acertar e errar de propósito | Placar e XP mudam conforme o resultado | ☐ |
 | 2.6 | Recarregar a página (F5) no meio | Continua na mesma pergunta, placar preservado | ☐ |
@@ -91,6 +91,7 @@ Observação: a distribuição de fáceis e difíceis (item 2.3) é o ponto em q
 | 3.3.7 | F5 no meio da pergunta (jogador B) | Volta com a pergunta e o **tempo restante correto**, sem reiniciar a rodada | ☐ |
 | 3.3.8 | Fechar a aba de B e reabrir pelo link | Reconecta, recebe a pergunta atual | ☐ |
 | 3.3.9 | Pontuação | 10 pontos por equipe que acertou | ☐ |
+| 3.3.11 | Multiplayer de 10 questões | 3 fáceis, 4 médias e 3 difíceis, em ordem crescente | ☐ |
 | 3.3.10 | Fim da partida | Tela final com vencedora e resultados por pergunta | ☐ |
 
 ### 3.4 Casos especiais

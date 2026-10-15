@@ -86,15 +86,51 @@ class Partida extends Model
             $this->questoes->push($q);
         }
     }
-    public function criar(){
+    /** Divide o total em 25% fáceis, 25% difíceis e o restante médias (20 = 5/10/5). */
+    public static function distribuicaoPorDificuldade(int $total): array
+    {
+        $facil = (int) round($total * 0.25);
+        $dificil = (int) round($total * 0.25);
+
+        return ['facil' => $facil, 'media' => $total - $facil - $dificil, 'dificil' => $dificil];
+    }
+
+    /** Escolhe até $quantidade questões verificadas da consulta, sem repetir as já escolhidas. */
+    private function sortear($consulta, int $quantidade, array &$ids): array
+    {
+        if ($quantidade <= 0) {
+            return [];
+        }
+
+        $escolhidas = [];
+        $candidatas = $consulta->limit($quantidade * 3)->get()
+            ->filter(fn ($q) => !in_array($q->id, $ids) && $q->verifica());
+
+        foreach ($candidatas->take($quantidade) as $q) {
+            $ids[] = $q->id;
+            $escolhidas[] = $q;
+        }
+
+        return $escolhidas;
+    }
+
+    /**
+     * Monta a partida em ordem crescente de dificuldade: fáceis, médias e difíceis.
+     * Faltando questões numa faixa, completa com aleatórias.
+     */
+    public function criar(?int $quantidade = null){
         $this->questoes = new Collection();
-        $override = config('app.numero_questoes_partida');
-        if ($override !== null && $override !== '') {
-            $num_questoes = max((int) $override, 0);
+        if ($quantidade !== null) {
+            $num_questoes = max($quantidade, 0);
         } else {
-            $num_questoes = app()->environment('production')
-                ? max((int) config('app.numero_questoes_partida_prod', 20), 0)
-                : max((int) config('app.numero_questoes_partida_dev', 5), 0);
+            $override = config('app.numero_questoes_partida');
+            if ($override !== null && $override !== '') {
+                $num_questoes = max((int) $override, 0);
+            } else {
+                $num_questoes = app()->environment('production')
+                    ? max((int) config('app.numero_questoes_partida_prod', 20), 0)
+                    : max((int) config('app.numero_questoes_partida_dev', 5), 0);
+            }
         }
 
         if ($num_questoes <= 0) {
@@ -102,14 +138,13 @@ class Partida extends Model
             return;
         }
 
-        $idQuestoesPartida = [];
+        $ids = [];
+        $quota = self::distribuicaoPorDificuldade($num_questoes);
 
-        // 1. Curadoria Colaborativa: Tenta injetar 1 questão pendente para a comunidade avaliar
-        // Busca 30 questões aleatórias e filtra as que ainda não foram aprovadas (!verifica)
-        // mas que possuem um score de comunidade não tão ruim (> -3)
+        // Curadoria Colaborativa: 1 questão pendente para a comunidade avaliar (sem estatística, conta como média)
         $candidatasMistas = Questao::with(['respostas', 'user.permissoes', 'verificacoes', 'votos'])
             ->inRandomOrder()->limit(40)->get();
-        
+
         $pendentes = $candidatasMistas->filter(function($q) {
             return \str_word_count($q->pergunta) > 2 // Verificação extra de sanidade
                    && !$q->verifica() 
@@ -117,36 +152,26 @@ class Partida extends Model
                    && $q->respostas()->count() >= 4;
         })->shuffle();
 
-        $qtdPendentes = min(1, count($pendentes), $num_questoes); 
-        foreach ($pendentes->take($qtdPendentes) as $q) {
-            $idQuestoesPartida[] = $q->id;
+        $pendente = [];
+        if ($quota['media'] > 0 && $pendentes->isNotEmpty()) {
+            $pendente = [$pendentes->first()];
+            $ids[] = $pendente[0]->id;
+            $quota['media']--;
+        }
+
+        $faceis = $this->sortear(Questao::facil(), $quota['facil'], $ids);
+        $medias = array_merge($pendente, $this->sortear(Questao::media(), $quota['media'], $ids));
+        $dificeis = $this->sortear(Questao::dificil(), $quota['dificil'], $ids);
+
+        foreach (array_merge($faceis, $medias, $dificeis) as $q) {
             $this->questoes->push($q);
         }
 
-        // 2. Traz as fáceis em um único lote (traz a mais para poder sortear 5)
-        $faceis = Questao::facil()->limit(15)->get()->filter(function($q) use ($idQuestoesPartida) {
-            return !in_array($q->id, $idQuestoesPartida) && $q->verifica();
-        })->shuffle();
-
-        $qtdFaceis = min(5, $num_questoes - count($idQuestoesPartida));
-        foreach ($faceis->take($qtdFaceis) as $q) {
-            $idQuestoesPartida[] = $q->id;
+        // Completa o que faltou (faixa sem questões suficientes) com aleatórias
+        $falta = $num_questoes - $this->questoes->count();
+        foreach ($this->sortear(Questao::aleatoria(), $falta, $ids) as $q) {
             $this->questoes->push($q);
         }
-
-        // 2. Completa o restante com aleatórias usando um único lote
-        $falta = $num_questoes - count($idQuestoesPartida);
-        if ($falta > 0) {
-            $aleatorias = Questao::aleatoria()->limit($falta * 3)->get()->filter(function($q) use ($idQuestoesPartida) {
-                return !in_array($q->id, $idQuestoesPartida) && $q->verifica();
-            })->shuffle();
-
-            foreach ($aleatorias->take($falta) as $q) {
-                $idQuestoesPartida[] = $q->id;
-                $this->questoes->push($q);
-            }
-        }
-
         //Percorre as questões e monta as alternativas
         foreach ($this->questoes as $indice => $questao) {
             //Cria a resposta correta

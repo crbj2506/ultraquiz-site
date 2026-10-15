@@ -39,8 +39,8 @@ class InicioPartidaService
 
         // Gera as questões usando a lógica existente do modo solo
         $p = new Partida();
-        $p->criar();
-        $questoes = array_slice($p->getState()['questoes_data'], 0, PartidaMultiplayer::quantidadeQuestoes());
+        $p->criar(PartidaMultiplayer::quantidadeQuestoes());
+        $questoes = $p->getState()['questoes_data'];
 
         $partida->update([
             'status' => 'playing',
