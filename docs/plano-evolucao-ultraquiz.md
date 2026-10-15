@@ -116,7 +116,9 @@ Resultado em 15/10/2026: **48 testes, 151 asserções, todos passando (~6 s)**. 
 
 Pendente para fechar a Etapa 1: itens 4 e 5 da seção 1.3.
 
-### Etapa 2 — Extrair serviços do lobby
+### Etapa 2 — Extrair serviços do lobby ✅
+
+Concluída: serviços em `app/Services/Lobby/` (`CriacaoSalaService`, `EntradaSalaService`, `EscolhaEquipeService`, `InicioPartidaService` e `LobbyException` para mensagens de regra). O controller só valida a requisição, chama os serviços e decide a resposta HTTP. 77 testes, 251 asserções, todos passando.
 
 Arquivos principais envolvidos:
 - [app/Http/Controllers/LobbyController.php](../app/Http/Controllers/LobbyController.php)

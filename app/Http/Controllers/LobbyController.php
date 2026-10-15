@@ -7,11 +7,22 @@ use Illuminate\Http\Request;
 use App\Models\PartidaMultiplayer;
 use App\Models\EquipeMultiplayer;
 use App\Models\JogadorPartida;
-use Illuminate\Support\Str;
+use App\Services\Lobby\CriacaoSalaService;
+use App\Services\Lobby\EntradaSalaService;
+use App\Services\Lobby\EscolhaEquipeService;
+use App\Services\Lobby\InicioPartidaService;
+use App\Services\Lobby\LobbyException;
 use Illuminate\Support\Facades\Auth;
 
 class LobbyController extends Controller
 {
+    public function __construct(
+        private CriacaoSalaService $criacaoSala,
+        private EntradaSalaService $entradaSala,
+        private EscolhaEquipeService $escolhaEquipe,
+        private InicioPartidaService $inicioPartida,
+    ) {
+    }
     public function index()
     {
         // Fluxo de intent: após autenticar, cria sala automaticamente para o anfitrião.
@@ -35,36 +46,19 @@ class LobbyController extends Controller
             return redirect()->route('login')->with('error', 'Você precisa estar logado para criar uma sala.');
         }
 
-        // PIN único entre todas as partidas, pois as buscas por PIN não filtram status.
-        do {
-            $pin = strtoupper(Str::random(4));
-        } while (PartidaMultiplayer::where('pin', $pin)->exists());
+        $partida = $this->criacaoSala->criar(Auth::id());
 
-        // Cria a partida no banco
-        $partida = PartidaMultiplayer::create([
-            'pin' => $pin,
-            'status' => 'waiting', // waiting, playing, finished
-            'user_id' => Auth::id()
-        ]);
-
-        // Cria as duas equipes padrão
-        $equipeA = EquipeMultiplayer::create(['partida_multiplayer_id' => $partida->id, 'nome' => 'Equipe A', 'cor' => 'primary']);
-        $equipeB = EquipeMultiplayer::create(['partida_multiplayer_id' => $partida->id, 'nome' => 'Equipe B', 'cor' => 'danger']);
-
-        return redirect()->route('lobby.sala', ['pin' => $pin]);
+        return redirect()->route('lobby.sala', ['pin' => $partida->pin]);
     }
 
     public function join(Request $request)
     {
         $request->validate(['pin' => 'required|string|size:4']);
         $pin = strtoupper($request->pin);
-        
-        $partida = PartidaMultiplayer::where('pin', $pin)->first();
-        if (!$partida) {
-            return redirect()->back()->with('error', 'Sala não encontrada. Verifique o PIN e tente novamente.');
-        }
-        if ($partida->status === 'finished') {
-            return redirect()->back()->with('error', 'Ops! Esta partida já foi encerrada e não aceita mais jogadores.');
+        try {
+            $this->entradaSala->localizar($pin, 'Ops! Esta partida já foi encerrada e não aceita mais jogadores.');
+        } catch (LobbyException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
         }
 
         return redirect()->route('lobby.sala', ['pin' => $pin]);
@@ -80,27 +74,17 @@ class LobbyController extends Controller
         ]);
 
         $pin = strtoupper($request->pin);
-        
-        // Verifica se a sala existe
-        $partida = PartidaMultiplayer::where('pin', $pin)->first();
-        if (!$partida) {
-            return redirect()->back()->with('error', 'Sala não encontrada. Verifique o PIN e tente novamente.');
-        }
-        if ($partida->status === 'finished') {
-            return redirect()->back()->with('error', 'Ops! Esta partida já foi encerrada.');
+
+        try {
+            $this->entradaSala->localizar($pin, 'Ops! Esta partida já foi encerrada.');
+        } catch (LobbyException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
         }
 
-        // Cria um usuário convidado temporário
-        $user = \App\Models\User::create([
-            'name' => $request->nickname . ' (Convidado)',
-            'email' => 'guest_' . uniqid() . '@ultraquiz.com',
-            'password' => \Illuminate\Support\Facades\Hash::make(Str::random(16)),
-            'is_guest' => true,
-            'email_verified_at' => now(),
-        ]);
+        $user = $this->entradaSala->criarConvidado($request->nickname);
 
         // Loga o convidado e redireciona
-        \Illuminate\Support\Facades\Auth::login($user);
+        Auth::login($user);
 
         return redirect()->route('lobby.sala', ['pin' => $pin]);
     }
@@ -139,45 +123,15 @@ class LobbyController extends Controller
 
         $request->validate(['equipe_id' => 'required|integer']);
 
-        $partida = PartidaMultiplayer::where('pin', strtoupper($pin))
+        $partida = PartidaMultiplayer::with('equipes')
+            ->where('pin', strtoupper($pin))
             ->whereIn('status', ['waiting', 'playing'])
             ->firstOrFail();
-        $equipe_id = $request->equipe_id;
 
         // Verifica se a equipe pertence a esta partida
-        $equipe = EquipeMultiplayer::where('partida_multiplayer_id', $partida->id)->findOrFail($equipe_id);
+        $equipe = EquipeMultiplayer::where('partida_multiplayer_id', $partida->id)->findOrFail($request->equipe_id);
 
-        // Lógica de Auto-balanceamento (especialmente para Late Joiners)
-        $equipeFinal = $equipe;
-        $mensagemBalanceamento = null;
-        
-        $outraEquipe = $partida->equipes->where('id', '!=', $equipe_id)->first();
-        if ($outraEquipe) {
-            $qtdEscolhida = $equipe->jogadores->where('user_id', '!=', Auth::id())->count();
-            $qtdOutra = $outraEquipe->jogadores->where('user_id', '!=', Auth::id())->count();
-
-            // Diferença de 2 jogadores: força o balanceamento
-            if ($qtdEscolhida - $qtdOutra >= 2) {
-                $equipeFinal = $outraEquipe;
-                $mensagemBalanceamento = "Para manter o jogo justo, você foi alocado na " . $outraEquipe->nome . "!";
-            }
-        }
-
-        // Remove o jogador de outras equipes desta mesma partida (se houver)
-        $jogadoresAtuais = JogadorPartida::where('partida_multiplayer_id', $partida->id)
-                                         ->where('user_id', Auth::id())
-                                         ->get();
-        
-        foreach($jogadoresAtuais as $j) {
-            $j->delete();
-        }
-
-        // Adiciona à equipe final
-        JogadorPartida::create([
-            'partida_multiplayer_id' => $partida->id,
-            'equipe_multiplayer_id' => $equipeFinal->id,
-            'user_id' => Auth::id()
-        ]);
+        [, $mensagemBalanceamento] = $this->escolhaEquipe->escolher($partida, $equipe, Auth::id());
 
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json([
@@ -197,50 +151,13 @@ class LobbyController extends Controller
     {
         $partida = PartidaMultiplayer::where('pin', strtoupper($pin))->firstOrFail();
 
-        // Apenas o criador pode iniciar
-        if (Auth::id() !== $partida->user_id) {
-            return redirect()->back()->with('error', 'Apenas o anfitrião pode iniciar a partida.');
+        try {
+            $this->inicioPartida->validar($partida, Auth::id());
+        } catch (LobbyException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
         }
 
-        // Só uma sala em espera pode ser iniciada (evita reiniciar partida em andamento ou encerrada)
-        if ($partida->status !== 'waiting') {
-            return redirect()->back()->with('error', 'Esta partida não pode ser iniciada.');
-        }
-
-        // Validação: Pelo menos 1 jogador em CADA equipe principal
-        $equipeA = $partida->equipes->where('nome', 'Equipe A')->first();
-        $equipeB = $partida->equipes->where('nome', 'Equipe B')->first();
-        
-        $countA = $equipeA ? $equipeA->jogadores()->count() : 0;
-        $countB = $equipeB ? $equipeB->jogadores()->count() : 0;
-
-        if ($countA < 1 || $countB < 1) {
-            return redirect()->back()->with('error', 'Ambas as equipes precisam de pelo menos 1 jogador para começar.');
-        }
-
-        // Zera pontuações de partidas anteriores se houver (Rematch safety)
-        foreach ($partida->equipes as $eq) {
-            $eq->update(['pontuacao' => 0]);
-        }
-
-        // Gera as questões da partida usando a lógica existente do Solo
-        $p = new \App\Models\Partida();
-        $p->criar();
-        $questoesData = $p->getState()['questoes_data'];
-        
-        // Determina a quantidade de questões por ambiente, com override opcional.
-        $qtdQuestoes = PartidaMultiplayer::quantidadeQuestoes();
-
-        // Limita a quantidade de questões
-        if (count($questoesData) > $qtdQuestoes) {
-            $questoesData = array_slice($questoesData, 0, $qtdQuestoes);
-        }
-
-        $partida->update([
-            'status' => 'playing',
-            'questoes_json' => json_encode($questoesData),
-            'pergunta_atual_index' => 0
-        ]);
+        $this->inicioPartida->iniciar($partida);
 
         // Se for AJAX, retorna JSON 
         if (request()->wantsJson() || request()->ajax()) {
