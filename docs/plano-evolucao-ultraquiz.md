@@ -249,4 +249,17 @@ Cada etapa deve ser considerada concluída apenas se:
 
 ## Próximo passo imediato
 
-Iniciar pela Etapa 1, validando os fluxos críticos do lobby e multiplayer e registrando os cenários que devem permanecer estáveis quando as refatorações começarem.
+Estado em 15/10/2026: Etapas 1 a 6 e o extra de mix de dificuldade concluídos e enviados (`master`, commit `e591c3c`, 120 testes). Os riscos R1–R12 estão tratados.
+
+Para retomar:
+1. Executar o roteiro [roteiro-testes-manuais.md](./roteiro-testes-manuais.md) (individual anônimo, solo de 20 questões e multiplayer com 3 navegadores) e anotar o que falhar. O servidor precisa ser reiniciado: `php artisan websocket:serve`. Para a partida solo de 20 questões, defina `APP_NUMERO_QUESTOES_PARTIDA=20` no `.env` e rode `php artisan config:clear`.
+2. Corrigir os problemas encontrados no teste manual.
+3. Etapa 7 (UX): mensagens de erro e carregamento padronizadas, feedback do lobby e da tela de jogo, acessibilidade básica.
+
+Pendências opcionais, de baixo risco:
+- `GET /lobby/{pin}/dados` é público e expõe os nomes dos jogadores a quem souber o PIN.
+- O XP do usuário é lido e gravado sem trava (dois jogos simultâneos podem perder um incremento).
+- Os contadores `acertos` e `erros` ainda são gravados, mas não decidem mais nada (a dificuldade vem de `estatisticas`).
+- Os cortes de dificuldade (70% e 40%, em `Questao`) podem precisar de ajuste quando houver estatísticas reais.
+
+Ambiente de testes: MySQL `ultraquiz_test` (root/123456, 127.0.0.1). Rodar com `$env:XDEBUG_MODE='off'; php artisan test` (cerca de 6 s).
