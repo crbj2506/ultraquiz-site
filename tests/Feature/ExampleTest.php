@@ -16,11 +16,17 @@ class ExampleTest extends TestCase
      */
     public function test_the_application_returns_a_successful_response()
     {
-        // A home sorteia uma questão e falha (500) com o banco sem questões; ver risco R11 no plano.
         $this->criarQuestoesAprovadas(1);
 
         $response = $this->get('/');
 
         $response->assertStatus(200);
+    }
+
+    public function test_home_sem_questoes_no_banco_nao_quebra()
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Ainda não há questões disponíveis');
     }
 }
