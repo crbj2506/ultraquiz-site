@@ -91,6 +91,7 @@
     document.addEventListener("DOMContentLoaded", function() {
         const pin = "{{ $partida->pin }}";
         const userId = "{{ Auth::id() }}";
+        const wsToken = "{{ \App\Support\WebSocketToken::emitir(Auth::id(), $partida->pin) }}";
         const minhaEquipeId = "{{ $minhaEquipeId }}";
         let conn;
         let reconnectInterval = 1000;
@@ -114,7 +115,7 @@
             conn.onopen = function() {
                 console.log("Connected to game server!");
                 reconnectInterval = 1000; // Reset timer on success
-                conn.send(JSON.stringify({ action: 'join', pin: pin, user_id: userId }));
+                conn.send(JSON.stringify({ action: 'join', pin: pin, token: wsToken }));
             };
 
             conn.onmessage = function(e) {

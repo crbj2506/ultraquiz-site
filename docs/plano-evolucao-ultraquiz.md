@@ -61,8 +61,8 @@ Arquivos analisados: [LobbyController.php](../app/Http/Controllers/LobbyControll
 
 | # | Achado | Local | Etapa |
 |---|--------|-------|-------|
-| R1 | O servidor WS confia em `user_id` enviado pelo cliente (sem autenticação) | `onMessage` | 5 |
-| R2 | Ação `start` do WS não verifica se quem enviou é o anfitrião e não valida o DB | `onMessage` | 5 |
+| R1 ✅ | O servidor WS confia em `user_id` enviado pelo cliente (sem autenticação) | `onMessage` | 5 |
+| R2 ✅ | Ação `start` do WS não verifica se quem enviou é o anfitrião e não valida o DB | `onMessage` | 5 |
 | R3 ✅ | `iniciarPartida` não valida o status atual (pode reiniciar partida `playing` ou `finished`) | `LobbyController` | 2 |
 | R4 ✅ | `escolherEquipe` não valida o status da partida (aceita `finished`) | `LobbyController` | 2 |
 | R5 | PIN único checado só entre `waiting`; `join` usa `first()` sem filtrar status, podendo achar partida antiga com o mesmo PIN | `create`/`join` | 2/4 |
@@ -73,6 +73,8 @@ Arquivos analisados: [LobbyController.php](../app/Http/Controllers/LobbyControll
 | R10 | Validação de entrada do `escolherEquipe` (`equipe_id`) só via `findOrFail`; nickname sem sanitização extra | `LobbyController` | 5 |
 | R11 ✅ | A home (`/`) retorna 500 quando não há nenhuma questão no banco (`principal/index.blade.php` lê `->pergunta` de null) | `resources/views/principal/index.blade.php` | 7 |
 | R12 ✅ | `votar` não valida `alternativa_id`: um id inexistente gera erro de FK em `estatisticas`, a exceção é engolida pelo `try/catch` e a rodada fica travada até o timer | `onMessage` | 3/5 |
+
+**Autenticação do WebSocket (R1/R2, resolvida):** as views `lobby/sala` e `lobby/jogar` embutem um token criptografado com a `APP_KEY` ([WebSocketToken.php](../app/Support/WebSocketToken.php): usuário + PIN + validade de 6 h). O `join` exige esse token; as demais ações usam a identidade já associada à conexão e ignoram qualquer `user_id` enviado pelo cliente. O `start` só é aceito do anfitrião (conferido no banco).
 
 #### 1.3 Plano de execução (tarefas)
 
@@ -110,7 +112,7 @@ $env:XDEBUG_MODE='off'   # opcional: evita lentidão do Xdebug
 php artisan test
 ```
 
-Resultado em 15/10/2026: **48 testes, 151 asserções, todos passando (~6 s)**. Após as correções de R3, R4, R11 e R12: **53 testes, 168 asserções, todos passando**.
+Resultado em 15/10/2026: **48 testes, 151 asserções, todos passando (~6 s)**. Após as correções de R3, R4, R11 e R12: **53 testes, 168 asserções, todos passando**. Após a autenticação do WebSocket (R1/R2): **61 testes, 191 asserções, todos passando**.
 
 Pendente para fechar a Etapa 1: itens 4 e 5 da seção 1.3.
 

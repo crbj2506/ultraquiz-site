@@ -17,8 +17,8 @@ class FluxoPartidaTest extends ServidorWebSocketTestCase
         $c1 = $this->conexao(1);
         $c2 = $this->conexao(2);
 
-        $this->enviar($c1, ['action' => 'join', 'pin' => 'abcd', 'user_id' => $u1->id]);
-        $this->enviar($c2, ['action' => 'join', 'pin' => 'abcd', 'user_id' => $u2->id]);
+        $this->entrar($c1, $u1, 'abcd');
+        $this->entrar($c2, $u2, 'abcd');
 
         return [$partida, $a, $b, $u1, $u2, $c1, $c2];
     }
@@ -29,7 +29,7 @@ class FluxoPartidaTest extends ServidorWebSocketTestCase
         $u1 = $this->colocarNaEquipe($partida, $this->equipe($partida, 'Equipe A'));
         $c1 = $this->conexao(1);
 
-        $this->enviar($c1, ['action' => 'join', 'pin' => 'abcd', 'user_id' => $u1->id]);
+        $this->entrar($c1, $u1, 'abcd');
 
         $pergunta = $c1->ultima('pergunta');
         $this->assertNotNull($pergunta);
@@ -98,18 +98,23 @@ class FluxoPartidaTest extends ServidorWebSocketTestCase
 
     public function test_voto_de_quem_nao_pertence_a_uma_equipe_e_ignorado(): void
     {
-        [, , , , , $c1] = $this->salaComDoisJogadoresConectados();
+        [$partida, , , , , $c1] = $this->salaComDoisJogadoresConectados();
+        $espectador = $this->criarUsuario();
+        $c3 = $this->conexao(3);
+        $this->entrar($c3, $espectador, 'ABCD');
 
-        $this->enviar($c1, ['action' => 'votar', 'pin' => 'ABCD', 'user_id' => 999999, 'alternativa_id' => 0]);
+        $this->enviar($c3, ['action' => 'votar', 'pin' => 'ABCD', 'alternativa_id' => 0]);
 
         $this->assertNull($c1->ultima('voto'));
     }
 
-    public function test_start_marca_sala_em_andamento_e_manda_todos_para_a_tela_de_jogo(): void
+    public function test_start_do_anfitriao_marca_sala_em_andamento_e_manda_todos_para_a_tela_de_jogo(): void
     {
-        [, , , , , $c1, $c2] = $this->salaComDoisJogadoresConectados();
+        [$partida, , , , , $c1, $c2] = $this->salaComDoisJogadoresConectados();
+        $cHost = $this->conexao(9);
+        $this->entrar($cHost, \App\Models\User::find($partida->user_id), 'ABCD');
 
-        $this->enviar($c1, ['action' => 'start', 'pin' => 'ABCD', 'user_id' => 1]);
+        $this->enviar($cHost, ['action' => 'start', 'pin' => 'ABCD']);
 
         $this->assertNotNull($c1->ultima('redirect'));
         $this->assertNotNull($c2->ultima('redirect'));

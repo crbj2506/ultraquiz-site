@@ -92,6 +92,7 @@
     document.addEventListener("DOMContentLoaded", function() {
         const pin = "{{ $partida->pin }}";
         const userId = "{{ Auth::id() }}";
+        const wsToken = "{{ \App\Support\WebSocketToken::emitir(Auth::id(), $partida->pin) }}";
         
         let conn;
         let reconnectInterval = 1000;
@@ -113,7 +114,7 @@
                 conn.send(JSON.stringify({
                     action: 'join',
                     pin: pin,
-                    user_id: userId
+                    token: wsToken
                 }));
 
                 // Força uma atualização inicial ao conectar
@@ -250,7 +251,7 @@
                         conn.send(JSON.stringify({
                             action: 'start',
                             pin: pin,
-                            user_id: userId
+                            token: wsToken
                         }));
                     } else {
                         console.error("Erro: Conexão WebSocket não está aberta.");
@@ -295,7 +296,7 @@
                             conn.send(JSON.stringify({
                                 action: 'join',
                                 pin: pin,
-                                user_id: userId
+                                token: wsToken
                             }));
                         }
                         atualizarListaJogadores();

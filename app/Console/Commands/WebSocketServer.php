@@ -58,7 +58,25 @@ class WebSocketServer extends Command implements MessageComponentInterface
 
             $action = $data['action'];
             $pin = isset($data['pin']) ? strtoupper(trim($data['pin'])) : null;
-            $user_id = $data['user_id'] ?? null;
+
+            // A identidade nunca vem do cliente: no join vem do token assinado,
+            // nas demais ações vem da conexão que já passou pelo join.
+            if ($action === 'join') {
+                $user_id = \App\Support\WebSocketToken::validar($data['token'] ?? null, $pin);
+                if ($user_id === null) {
+                    echo "[AUTH] Join recusado (token ausente, inválido ou expirado). Conn {$from->resourceId}\n";
+                    $from->send(json_encode(['type' => 'auth_error', 'message' => 'Sessão inválida. Recarregue a página.']));
+                    return;
+                }
+            } else {
+                $user_id = ($pin && isset($this->salas[$pin]) && $this->salas[$pin]['conns']->contains($from))
+                    ? $this->salas[$pin]['conns'][$from]
+                    : null;
+                if ($user_id === null) {
+                    echo "[AUTH] Ação '$action' ignorada: conexão {$from->resourceId} não autenticada na sala.\n";
+                    return;
+                }
+            }
 
             echo "Mensagem recebida: Action={$action}, PIN={$pin}, User={$user_id}\n";
 
@@ -178,6 +196,11 @@ class WebSocketServer extends Command implements MessageComponentInterface
             }
 
             if ($action === 'start' && $pin) {
+                $anfitriaoId = \App\Models\PartidaMultiplayer::where('pin', $pin)->value('user_id');
+                if ((int) $anfitriaoId !== (int) $user_id) {
+                    echo "[AUTH] START recusado: User $user_id não é o anfitrião da Sala $pin.\n";
+                    return;
+                }
                 echo "Comando START recebido para Sala $pin. Redirecionando todos para a tela de jogo...\n";
                 if (isset($this->salas[$pin])) {
                     $this->salas[$pin]['status'] = 'playing';

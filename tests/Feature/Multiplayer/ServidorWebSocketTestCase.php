@@ -85,6 +85,15 @@ abstract class ServidorWebSocketTestCase extends TestCase
         }
     }
 
+    protected function entrar(object $conn, \App\Models\User $user, string $pin = 'ABCD'): void
+    {
+        $this->enviar($conn, [
+            'action' => 'join',
+            'pin' => $pin,
+            'token' => \App\Support\WebSocketToken::emitir($user->id, $pin),
+        ]);
+    }
+
     protected function enviar(ConnectionInterface $conn, array $msg): void
     {
         ob_start();

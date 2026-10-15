@@ -109,4 +109,18 @@ class EntrarSalaTest extends TestCase
 
         $this->actingAs($this->criarUsuario())->get(route('lobby.sala', ['pin' => 'ABCD']))->assertOk();
     }
+
+    public function test_sala_e_jogo_entregam_token_websocket_valido_do_proprio_usuario(): void
+    {
+        $partida = $this->criarSala(null, 'playing', 'ABCD');
+        $jogador = $this->colocarNaEquipe($partida, $this->equipe($partida, 'Equipe A'));
+        $espectador = $this->criarUsuario();
+
+        foreach ([[$jogador, 'lobby.jogar'], [$espectador, 'lobby.sala']] as [$user, $rota]) {
+            $html = $this->actingAs($user)->get(route($rota, ['pin' => 'ABCD']))->assertOk()->getContent();
+
+            $this->assertSame(1, preg_match('/const wsToken = "([^"]+)"/', $html, $m));
+            $this->assertSame($user->id, \App\Support\WebSocketToken::validar(html_entity_decode($m[1]), 'ABCD'));
+        }
+    }
 }
