@@ -66,11 +66,22 @@ abstract class ServidorWebSocketTestCase extends TestCase
 
     protected function definirPropriedade(string $nome, $valor): void
     {
+        if ($nome === 'salas') {
+            $this->lerPropriedadeObjeto('salas')->salas = $valor;
+            return;
+        }
         $p = new \ReflectionProperty(WebSocketServer::class, $nome);
         $p->setValue($this->servidor, $valor);
     }
 
     protected function lerPropriedade(string $nome)
+    {
+        $valor = $this->lerPropriedadeObjeto($nome);
+
+        return $nome === 'salas' ? $valor->salas : $valor;
+    }
+
+    private function lerPropriedadeObjeto(string $nome)
     {
         return (new \ReflectionProperty(WebSocketServer::class, $nome))->getValue($this->servidor);
     }

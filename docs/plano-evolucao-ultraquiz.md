@@ -135,7 +135,9 @@ Objetivos:
 - simplificar as actions HTTP
 - facilitar testes isolados de regras do lobby
 
-### Etapa 3 — Refatorar o WebSocket em manager de salas
+### Etapa 3 — Refatorar o WebSocket em manager de salas ✅
+
+Concluída: o `WebSocketServer` virou orquestrador (roteamento de mensagens e timers, ~350 linhas, antes ~660). Serviços em `app/Services/Multiplayer/`: `GerenciadorSalas` (estado, conexões, votos, revanche, broadcast), `ApuradorVotos` (maioria + desempate por velocidade), `ApuracaoService` (pontos, XP, estatísticas), `PerguntaService` (dados da pergunta, validação de alternativa, morte súbita). Troca de `SplObjectStorage::attach/detach/contains` (obsoletos no PHP 8.5) por `offset*`. 84 testes, 268 asserções, todos passando; servidor sobe e abre a porta.
 
 Arquivos principais envolvidos:
 - [app/Console/Commands/WebSocketServer.php](../app/Console/Commands/WebSocketServer.php)

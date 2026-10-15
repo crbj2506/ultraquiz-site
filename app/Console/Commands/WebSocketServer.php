@@ -2,39 +2,49 @@
 
 namespace App\Console\Commands;
 
+use App\Models\JogadorPartida;
+use App\Models\PartidaMultiplayer;
+use App\Services\Multiplayer\ApuracaoService;
+use App\Services\Multiplayer\GerenciadorSalas;
+use App\Services\Multiplayer\PerguntaService;
+use App\Support\WebSocketToken;
 use Illuminate\Console\Command;
-use Ratchet\Server\IoServer;
-use Ratchet\Http\HttpServer;
-use Ratchet\WebSocket\WsServer;
-use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
+use Ratchet\Http\HttpServer;
+use Ratchet\MessageComponentInterface;
+use Ratchet\Server\IoServer;
+use Ratchet\WebSocket\WsServer;
 
+/**
+ * Servidor WebSocket do multiplayer: recebe as mensagens, aciona os serviços
+ * (estado das salas, perguntas, apuração) e controla os timers das rodadas.
+ */
 class WebSocketServer extends Command implements MessageComponentInterface
 {
     protected $signature = 'websocket:serve {--port=8090}';
     protected $description = 'Start the WebSocket server for UltraQuiz Multiplayer';
 
     protected $clients;
-    protected $salas; // [ pin => [ 'conns' => SplObjectStorage, 'timer' => ..., 'votos' => [team_id => alt_id], 'player_equipe' => [uid => eid] ] ]
+    protected GerenciadorSalas $salas;
+    protected PerguntaService $perguntas;
+    protected ApuracaoService $apuracao;
     protected $loop;
 
     public function __construct()
     {
         parent::__construct();
         $this->clients = new \SplObjectStorage;
-        $this->salas = [];
+        $this->salas = new GerenciadorSalas;
+        $this->perguntas = new PerguntaService;
+        $this->apuracao = new ApuracaoService;
     }
 
     public function handle()
     {
         $port = $this->option('port');
-        
+
         $server = IoServer::factory(
-            new HttpServer(
-                new WsServer(
-                    $this
-                )
-            ),
+            new HttpServer(new WsServer($this)),
             $port,
             '0.0.0.0'
         );
@@ -46,7 +56,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
 
     public function onOpen(ConnectionInterface $conn)
     {
-        $this->clients->attach($conn);
+        $this->clients->offsetSet($conn, null);
         echo "New connection! ({$conn->resourceId})\n";
     }
 
@@ -59,607 +69,356 @@ class WebSocketServer extends Command implements MessageComponentInterface
             $action = $data['action'];
             $pin = isset($data['pin']) ? strtoupper(trim($data['pin'])) : null;
 
-            // A identidade nunca vem do cliente: no join vem do token assinado,
-            // nas demais ações vem da conexão que já passou pelo join.
-            if ($action === 'join') {
-                $user_id = \App\Support\WebSocketToken::validar($data['token'] ?? null, $pin);
-                if ($user_id === null) {
-                    echo "[AUTH] Join recusado (token ausente, inválido ou expirado). Conn {$from->resourceId}\n";
-                    $from->send(json_encode(['type' => 'auth_error', 'message' => 'Sessão inválida. Recarregue a página.']));
-                    return;
-                }
-            } else {
-                $user_id = ($pin && isset($this->salas[$pin]) && $this->salas[$pin]['conns']->contains($from))
-                    ? $this->salas[$pin]['conns'][$from]
-                    : null;
-                if ($user_id === null) {
-                    echo "[AUTH] Ação '$action' ignorada: conexão {$from->resourceId} não autenticada na sala.\n";
-                    return;
-                }
-            }
+            $userId = $this->identificar($from, $action, $pin, $data);
+            if ($userId === null) return;
 
-            echo "Mensagem recebida: Action={$action}, PIN={$pin}, User={$user_id}\n";
+            echo "Mensagem recebida: Action={$action}, PIN={$pin}, User={$userId}\n";
 
-            if ($action === 'join' && $pin) {
-                if (!isset($this->salas[$pin])) {
-                    $this->salas[$pin] = [
-                        'conns' => new \SplObjectStorage,
-                        'votos' => [],
-                        'votos_detalhados' => [], // [equipe_id => [user_id => ['alt' => alt_id, 'time' => time]]]
-                        'votos_jogadores' => [], // Tracks individual votes: [user_id => bool]
-                        'player_equipe' => [],
-                        'resultados' => [], // [index => ['pergunta' => '...', 'correta' => '...', 'equipes' => [eid => ['voto' => '...', 'acertou' => bool]]]]
-                        'rematch_votos' => [], // [team_id => bool]
-                        'status' => 'idle' // idle, playing, waiting_next
-                    ];
-                }
-                // Sempre anexa a conexão à sala
-                $this->salas[$pin]['conns']->attach($from, $user_id);
-                echo "User $user_id joined/refreshed Sala $pin (Conn {$from->resourceId})\n";
-
-                // Busca a equipe do jogador no DB e armazena em memória para rapidez
-                $jogador = \App\Models\JogadorPartida::where('user_id', $user_id)
-                    ->whereHas('partida', function($q) use ($pin) {
-                        $q->where('pin', $pin);
-                    })->first();
-                
-                if ($jogador) {
-                    $this->salas[$pin]['player_equipe'][$user_id] = $jogador->equipe_multiplayer_id;
-                }
-
-                // Avisa os OUTROS que alguém entrou (Throttled or Simple)
-                $this->broadcastToSala($pin, [
-                    'type' => 'system',
-                    'user_id' => $user_id,
-                    'message' => "Um jogador entrou."
-                ], $from);
-                
-                // SINCRONIZAÇÃO / GATILHO
-                $pm = \App\Models\PartidaMultiplayer::where('pin', $pin)->first();
-                if ($pm && $pm->status === 'playing') {
-                    echo "Sala $pin está em 'playing'. Verificando necessidade de rodada...\n";
-                    $statusSala = $this->salas[$pin]['status'] ?? 'idle';
-                    
-                    if ($statusSala === 'idle' || $statusSala === 'playing') {
-                        if (!isset($this->salas[$pin]['timer'])) {
-                            echo "Iniciando proximaPergunta na Sala $pin para User $user_id\n";
-                            $this->proximaPergunta($pin);
-                        } else {
-                            echo "Sincronizando pergunta atual da Sala $pin para User $user_id\n";
-                            $this->enviarPerguntaAtualParaCliente($pm, $from);
-                        }
-                    } else if ($statusSala === 'waiting_next') {
-                        echo "Aguardando próxima questão (em intervalo). Sincronizando info...\n";
-                        // Se estiver no intervalo de 4s, não faz nada, o timer original vai disparar
+            switch ($action) {
+                case 'join':
+                    $this->entrar($from, $pin, $userId);
+                    break;
+                case 'votar':
+                    if (isset($data['alternativa_id'])) {
+                        $this->votar($pin, $userId, $data['alternativa_id']);
                     }
-                } else {
-                    $statusDb = $pm ? $pm->status : 'N/A';
-                    echo "Sala $pin não está pronta para sync (Status DB: $statusDb)\n";
-                }
-            }
-
-            if ($action === 'votar' && $pin && isset($data['alternativa_id'])) {
-                $equipe_id = $this->salas[$pin]['player_equipe'][$user_id] ?? null;
-                if (!$equipe_id) return;
-
-                if (!$this->alternativaValida($pin, $data['alternativa_id'])) {
-                    echo "[VOTAR] Alternativa inválida ignorada. Sala: $pin | User: $user_id\n";
-                    return;
-                }
-
-                // Registra o voto detalhado (Maioria com desempate de tempo)
-                if (!isset($this->salas[$pin]['votos_detalhados'][$equipe_id])) {
-                    $this->salas[$pin]['votos_detalhados'][$equipe_id] = [];
-                }
-                $this->salas[$pin]['votos_detalhados'][$equipe_id][$user_id] = [
-                    'alt' => $data['alternativa_id'],
-                    'time' => microtime(true)
-                ];
-
-                // Registra que o jogador votou na rodada
-                $this->salas[$pin]['votos_jogadores'][$user_id] = true;
-
-                echo "[VOTAR] Sala: $pin | User: $user_id | Equipe: $equipe_id | Alt: {$data['alternativa_id']}\n";
-
-                // Avisa a todos sobre o voto (para brilhar a alternativa no front)
-                $this->broadcastToSala($pin, [
-                    'type' => 'voto',
-                    'user_id' => $user_id,
-                    'equipe_id' => $equipe_id,
-                    'alternativa_id' => $data['alternativa_id']
-                ]);
-
-                // Verifica se TODOS os jogadores conectados já votaram
-                $connectedUserIds = [];
-                $conns = $this->salas[$pin]['conns'];
-                foreach ($conns as $conn) {
-                    $uid = $conns->getInfo();
-                    // Verifica se o usuário tem afiliação a uma equipe (é um jogador válido)
-                    if ($uid && isset($this->salas[$pin]['player_equipe'][$uid])) {
-                        $connectedUserIds[] = $uid;
-                    }
-                }
-                $connectedUserIds = array_unique($connectedUserIds);
-
-                $todosVotaram = true;
-                foreach ($connectedUserIds as $uid) {
-                    if (!isset($this->salas[$pin]['votos_jogadores'][$uid])) {
-                        $todosVotaram = false;
-                        break;
-                    }
-                }
-
-                if ($todosVotaram && count($connectedUserIds) > 0) {
-                    echo "Todos os " . count($connectedUserIds) . " jogadores conectados votaram na Sala $pin. Pulando timer!\n";
-                    $this->processarFimDaPergunta($pin, "Todos votaram!");
-                }
-            }
-
-            if ($action === 'start' && $pin) {
-                $anfitriaoId = \App\Models\PartidaMultiplayer::where('pin', $pin)->value('user_id');
-                if ((int) $anfitriaoId !== (int) $user_id) {
-                    echo "[AUTH] START recusado: User $user_id não é o anfitrião da Sala $pin.\n";
-                    return;
-                }
-                echo "Comando START recebido para Sala $pin. Redirecionando todos para a tela de jogo...\n";
-                if (isset($this->salas[$pin])) {
-                    $this->salas[$pin]['status'] = 'playing';
-                }
-                $this->broadcastToSala($pin, [
-                    'type' => 'redirect'
-                ]);
-            }
-
-            if ($action === 'rematch_vote' && $pin) {
-                $equipe_id = $this->salas[$pin]['player_equipe'][$user_id] ?? null;
-                if (!$equipe_id) return;
-
-                echo "Voto de revanche recebido: Sala $pin, Equipe $equipe_id\n";
-                $this->salas[$pin]['rematch_votos'][$equipe_id] = true;
-
-                $equipesAtivas = array_unique(array_values($this->salas[$pin]['player_equipe']));
-                $votosAtuais = array_keys(array_filter($this->salas[$pin]['rematch_votos']));
-                
-                // Verifica se pelo menos um de cada equipe ativa votou
-                $todosAceitaram = true;
-                foreach ($equipesAtivas as $eid) {
-                    if (!isset($this->salas[$pin]['rematch_votos'][$eid])) {
-                        $todosAceitaram = false;
-                        break;
-                    }
-                }
-
-                if ($todosAceitaram && count($equipesAtivas) > 1) {
-                    echo "Revanche aceita por ambas as equipes na Sala $pin! Reiniciando...\n";
-                    $pm = \App\Models\PartidaMultiplayer::with('equipes')->where('pin', $pin)->first();
-                    if ($pm) {
-                        $p = new \App\Models\Partida();
-                        $p->criar();
-                        $qs = array_slice($p->getState()['questoes_data'], 0, \App\Models\PartidaMultiplayer::quantidadeQuestoes());
-                        $pm->update(['status' => 'playing', 'questoes_json' => json_encode($qs), 'pergunta_atual_index' => 0]);
-                        foreach ($pm->equipes as $eq) { $eq->update(['pontuacao' => 0]); }
-                        $this->salas[$pin]['votos'] = [];
-                        $this->salas[$pin]['votos_detalhados'] = [];
-                        $this->salas[$pin]['votos_jogadores'] = [];
-                        $this->salas[$pin]['resultados'] = [];
-                        $this->salas[$pin]['rematch_votos'] = [];
-                        $this->broadcastToSala($pin, ['type' => 'reset']);
-                        $this->proximaPergunta($pin);
-                    }
-                } else {
-                    // Avisa o progresso da votação
-                    $this->broadcastToSala($pin, [
-                        'type' => 'rematch_status',
-                        'equipes_que_votaram' => $votosAtuais,
-                        'aguardando' => array_values(array_diff($equipesAtivas, $votosAtuais))
-                    ]);
-                }
+                    break;
+                case 'start':
+                    $this->iniciar($pin, $userId);
+                    break;
+                case 'rematch_vote':
+                    $this->votarRevanche($pin, $userId);
+                    break;
             }
         } catch (\Exception $e) {
             echo "Erro em onMessage: " . $e->getMessage() . "\n";
         }
     }
 
-    private function alternativaValida($pin, $alternativaId): bool
+    /**
+     * A identidade nunca vem do cliente: no join vem do token assinado,
+     * nas demais ações vem da conexão que já passou pelo join.
+     */
+    private function identificar(ConnectionInterface $from, string $action, ?string $pin, array $data): ?int
     {
-        if (!is_int($alternativaId) && !(is_string($alternativaId) && ctype_digit($alternativaId))) {
-            return false;
+        if ($action === 'join') {
+            $userId = WebSocketToken::validar($data['token'] ?? null, $pin);
+            if ($userId === null) {
+                echo "[AUTH] Join recusado (token ausente, inválido ou expirado). Conn {$from->resourceId}\n";
+                $from->send(json_encode(['type' => 'auth_error', 'message' => 'Sessão inválida. Recarregue a página.']));
+            }
+
+            return $userId;
         }
 
-        $pm = \App\Models\PartidaMultiplayer::where('pin', $pin)->first();
-        $questoes = $pm && $pm->questoes_json ? json_decode($pm->questoes_json, true) : null;
-        $opcoes = $questoes[$pm->pergunta_atual_index]['opcoes'] ?? null;
+        $userId = $pin ? $this->salas->usuarioDaConexao($pin, $from) : null;
+        if ($userId === null) {
+            echo "[AUTH] Ação '$action' ignorada: conexão {$from->resourceId} não autenticada na sala.\n";
+        }
 
-        return is_array($opcoes) && in_array((int) $alternativaId, $opcoes, true);
+        return $userId;
     }
 
-    private function proximaPergunta($pin)
+    private function entrar(ConnectionInterface $from, ?string $pin, int $userId): void
     {
-        $pm = \App\Models\PartidaMultiplayer::where('pin', $pin)->first();
+        if (!$pin) return;
+
+        $this->salas->garantir($pin);
+        $this->salas->anexar($pin, $from, $userId);
+        echo "User $userId joined/refreshed Sala $pin (Conn {$from->resourceId})\n";
+
+        $jogador = JogadorPartida::where('user_id', $userId)
+            ->whereHas('partida', fn ($q) => $q->where('pin', $pin))
+            ->first();
+        if ($jogador) {
+            $this->salas->definirEquipe($pin, $userId, $jogador->equipe_multiplayer_id);
+        }
+
+        $this->salas->broadcast($pin, [
+            'type' => 'system',
+            'user_id' => $userId,
+            'message' => 'Um jogador entrou.',
+        ], $from);
+
+        $this->sincronizarEntrada($pin, $from);
+    }
+
+    /** Quem entra numa partida em andamento dispara a primeira rodada ou recebe a pergunta atual. */
+    private function sincronizarEntrada(string $pin, ConnectionInterface $from): void
+    {
+        $pm = PartidaMultiplayer::where('pin', $pin)->first();
+        if (!$pm || $pm->status !== 'playing') {
+            return;
+        }
+
+        $status = $this->salas->get($pin, 'status', 'idle');
+        if ($status !== 'idle' && $status !== 'playing') {
+            return; // em intervalo: o timer pendente avança sozinho
+        }
+
+        if ($this->salas->get($pin, 'timer') === null) {
+            $this->proximaPergunta($pin);
+        } else {
+            $this->enviarPerguntaAtual($pm, $from);
+        }
+    }
+
+    private function votar(string $pin, int $userId, $alternativaId): void
+    {
+        $equipeId = $this->salas->equipeDoJogador($pin, $userId);
+        if (!$equipeId) return;
+
+        $pm = PartidaMultiplayer::where('pin', $pin)->first();
+        if (!$this->perguntas->alternativaValida($pm, $alternativaId)) {
+            echo "[VOTAR] Alternativa inválida ignorada. Sala: $pin | User: $userId\n";
+            return;
+        }
+
+        $this->salas->registrarVoto($pin, $equipeId, $userId, $alternativaId);
+        echo "[VOTAR] Sala: $pin | User: $userId | Equipe: $equipeId | Alt: $alternativaId\n";
+
+        $this->salas->broadcast($pin, [
+            'type' => 'voto',
+            'user_id' => $userId,
+            'equipe_id' => $equipeId,
+            'alternativa_id' => $alternativaId,
+        ]);
+
+        if ($this->salas->todosVotaram($pin)) {
+            echo "Todos os jogadores conectados votaram na Sala $pin. Pulando timer!\n";
+            $this->processarFimDaPergunta($pin, 'Todos votaram!');
+        }
+    }
+
+    private function iniciar(string $pin, int $userId): void
+    {
+        $anfitriaoId = PartidaMultiplayer::where('pin', $pin)->value('user_id');
+        if ((int) $anfitriaoId !== $userId) {
+            echo "[AUTH] START recusado: User $userId não é o anfitrião da Sala $pin.\n";
+            return;
+        }
+
+        echo "Comando START recebido para Sala $pin. Redirecionando todos para a tela de jogo...\n";
+        $this->salas->set($pin, 'status', 'playing');
+        $this->salas->broadcast($pin, ['type' => 'redirect']);
+    }
+
+    private function votarRevanche(string $pin, int $userId): void
+    {
+        $equipeId = $this->salas->equipeDoJogador($pin, $userId);
+        if (!$equipeId) return;
+
+        echo "Voto de revanche recebido: Sala $pin, Equipe $equipeId\n";
+        $this->salas->registrarRevanche($pin, $equipeId);
+
+        if (!$this->salas->todasAceitaramRevanche($pin)) {
+            $votaram = $this->salas->equipesQueVotaramRevanche($pin);
+            $this->salas->broadcast($pin, [
+                'type' => 'rematch_status',
+                'equipes_que_votaram' => $votaram,
+                'aguardando' => array_values(array_diff($this->salas->equipesAtivas($pin), $votaram)),
+            ]);
+            return;
+        }
+
+        $pm = PartidaMultiplayer::with('equipes')->where('pin', $pin)->first();
+        if (!$pm) return;
+
+        echo "Revanche aceita por todas as equipes na Sala $pin! Reiniciando...\n";
+        $partida = new \App\Models\Partida();
+        $partida->criar();
+        $questoes = array_slice($partida->getState()['questoes_data'], 0, PartidaMultiplayer::quantidadeQuestoes());
+
+        $pm->update(['status' => 'playing', 'questoes_json' => json_encode($questoes), 'pergunta_atual_index' => 0]);
+        foreach ($pm->equipes as $equipe) {
+            $equipe->update(['pontuacao' => 0]);
+        }
+
+        $this->salas->reiniciarParaRevanche($pin);
+        $this->salas->broadcast($pin, ['type' => 'reset']);
+        $this->proximaPergunta($pin);
+    }
+
+    private function proximaPergunta(string $pin): void
+    {
+        $pm = PartidaMultiplayer::where('pin', $pin)->first();
         if (!$pm || !$pm->questoes_json) {
             echo "Erro: Partida ou questões não encontradas para Sala $pin\n";
             return;
         }
 
-        $questoesArray = json_decode($pm->questoes_json, true);
+        $questoes = $this->perguntas->questoes($pm);
         $index = $pm->pergunta_atual_index;
 
-        if (!$questoesArray || $index >= count($questoesArray)) {
+        if (!$questoes || $index >= count($questoes)) {
             echo "Partida finalizada ou sem questões para Sala $pin\n";
             $this->finalizarPartida($pin);
             return;
         }
 
-        $this->salas[$pin]['votos'] = []; // Limpa os votos para a nova rodada
-        $this->salas[$pin]['votos_detalhados'] = [];
-        $this->salas[$pin]['votos_jogadores'] = [];
-        $this->salas[$pin]['status'] = 'playing';
-        $broadcastData = $this->prepararDadosPergunta($pm, $questoesArray, $index);
-        echo "Enviando Pergunta #".($index+1)." para Sala $pin\n";
-        $this->broadcastToSala($pin, $broadcastData);
+        $this->salas->novaRodada($pin);
+        echo "Enviando Pergunta #" . ($index + 1) . " para Sala $pin\n";
+        $this->salas->broadcast($pin, $this->perguntas->dados($pm, $questoes, $index));
 
-        $this->iniciarTimer($pin, 60);
+        $this->iniciarTimer($pin, PerguntaService::TEMPO_RODADA);
     }
 
-    private function enviarPerguntaAtualParaCliente($pm, $conn)
+    private function enviarPerguntaAtual(PartidaMultiplayer $pm, ConnectionInterface $conn): void
     {
-        $questoesArray = json_decode($pm->questoes_json, true);
+        $questoes = $this->perguntas->questoes($pm);
         $index = $pm->pergunta_atual_index;
-        if ($index >= count($questoesArray)) return;
+        if ($index >= count($questoes)) return;
 
-        $data = $this->prepararDadosPergunta($pm, $questoesArray, $index);
-        
+        $dados = $this->perguntas->dados($pm, $questoes, $index);
+
         // Se houver um timer rodando, manda o tempo REAL restante
-        if (isset($this->salas[$pm->pin]['tempo_restante'])) {
-            $data['tempo'] = $this->salas[$pm->pin]['tempo_restante'];
+        $restante = $this->salas->get($pm->pin, 'tempo_restante');
+        if ($restante !== null) {
+            $dados['tempo'] = $restante;
         }
 
-        $conn->send(json_encode($data));
-        echo "Sincronizando Pergunta #".($index+1)." com novo cliente na Sala {$pm->pin}\n";
+        $conn->send(json_encode($dados));
+        echo "Sincronizando Pergunta #" . ($index + 1) . " com novo cliente na Sala {$pm->pin}\n";
     }
 
-    private function prepararDadosPergunta($pm, $questoesArray, $index)
+    private function iniciarTimer(string $pin, int $segundos): void
     {
-        if (!$questoesArray || !isset($questoesArray[$index])) {
-            throw new \Exception("Dados da questão no índice $index não encontrados.");
-        }
+        $this->cancelarTimer($pin);
 
-        $qData = $questoesArray[$index];
-        
-        // DEBUG
-        $debugKeys = is_array($qData) ? implode(',', array_keys($qData)) : 'NOT ARRAY';
-        $debugId = is_array($qData) ? ($qData['id'] ?? 'NO ID') : 'N/A';
-        echo "Preparando Pergunta $index (Sala {$pm->pin}). IDs em qData: [$debugKeys], ID: $debugId\n";
+        $this->salas->set($pin, 'tempo_restante', $segundos);
+        $timer = $this->loop->addPeriodicTimer(1, function () use ($pin) {
+            $restante = $this->salas->get($pin, 'tempo_restante') - 1;
+            $this->salas->set($pin, 'tempo_restante', $restante);
 
-        $questaoReal = \App\Models\Questao::with('respostas')->find($qData['id']);
-        
-        if (!$questaoReal) {
-            throw new \Exception("Questão ID {$qData['id']} não encontrada no banco de dados.");
-        }
+            $this->salas->broadcast($pin, ['type' => 'timer', 'tempo' => $restante]);
 
-        $alternativas = [];
-        foreach ($qData['opcoes'] as $respId) {
-            if ($respId === 0) {
-                $alternativas[] = ['id' => 0, 'texto' => $questaoReal->resposta];
-            } else {
-                $resp = $questaoReal->respostas->find($respId);
-                if ($resp) $alternativas[] = ['id' => $resp->id, 'texto' => $resp->alternativa];
-            }
-        }
-
-        return [
-            'type' => 'pergunta',
-            'pergunta' => $questaoReal->pergunta,
-            'alternativas' => $alternativas,
-            'tempo' => 60,
-            'index' => $index + 1,
-            'total' => count($questoesArray)
-        ];
-    }
-
-    private function iniciarTimer($pin, $segundos)
-    {
-        if (isset($this->salas[$pin]['timer'])) {
-            $this->loop->cancelTimer($this->salas[$pin]['timer']);
-        }
-
-        $this->salas[$pin]['tempo_restante'] = $segundos;
-        $this->salas[$pin]['timer'] = $this->loop->addPeriodicTimer(1, function() use ($pin) {
-            $this->salas[$pin]['tempo_restante']--;
-            
-            $this->broadcastToSala($pin, [
-                'type' => 'timer',
-                'tempo' => $this->salas[$pin]['tempo_restante']
-            ]);
-
-            if ($this->salas[$pin]['tempo_restante'] <= 0) {
-                $this->loop->cancelTimer($this->salas[$pin]['timer']);
+            if ($restante <= 0) {
                 $this->processarFimDaPergunta($pin);
             }
         });
+        $this->salas->set($pin, 'timer', $timer);
     }
 
-    private function processarFimDaPergunta($pin, $motivo = 'Tempo esgotado!')
+    private function cancelarTimer(string $pin): void
     {
-        if (isset($this->salas[$pin]['timer'])) {
-            $this->loop->cancelTimer($this->salas[$pin]['timer']);
-            unset($this->salas[$pin]['timer']);
+        $timer = $this->salas->get($pin, 'timer');
+        if ($timer !== null) {
+            $this->loop->cancelTimer($timer);
+            $this->salas->remover($pin, 'timer');
         }
+    }
 
-        $pm = \App\Models\PartidaMultiplayer::where('pin', $pin)->first();
-        $questoesArray = json_decode($pm->questoes_json, true);
+    private function processarFimDaPergunta(string $pin, string $motivo = 'Tempo esgotado!'): void
+    {
+        $this->cancelarTimer($pin);
+
+        $pm = PartidaMultiplayer::where('pin', $pin)->first();
+        $questoes = $this->perguntas->questoes($pm);
         $index = $pm->pergunta_atual_index;
-        
-        $qData = $questoesArray[$index];
-        $questaoReal = \App\Models\Questao::with('respostas')->find($qData['id']);
-        $respostaCorretaTexto = $questaoReal->resposta;
-        $idCorreto = 0; // No nosso sistema 0 é a correta original
 
-        // Apuração
-        $resEquipes = [];
-        $estatisticasRodada = [];
-        // Equipes com jogadores conectados, mais as que já votaram (mesmo que o votante tenha saído).
-        $equipesNaSala = array_unique(array_merge(
-            array_values($this->salas[$pin]['player_equipe']),
-            array_keys($this->salas[$pin]['votos_detalhados'] ?? [])
-        ));
-        
-        echo "[APURAÇÃO] Sala: $pin | Correta: $idCorreto\n";
+        $apuracao = $this->apuracao->apurar(
+            $pm,
+            $questoes[$index],
+            $this->salas->equipesDaRodada($pin),
+            $this->salas->get($pin, 'votos_detalhados', [])
+        );
+        $questao = $apuracao['questao'];
 
-        foreach ($equipesNaSala as $eid) {
-            $votosEquipe = $this->salas[$pin]['votos_detalhados'][$eid] ?? [];
-            $votoId = null;
-
-            if (count($votosEquipe) > 0) {
-                $contagem = []; // [alt => count]
-                $primeirosTempos = []; // [alt => min_time]
-                
-                // Consolida os votos da equipe
-                foreach ($votosEquipe as $uid => $vdata) {
-                    $alt = $vdata['alt'];
-                    $time = $vdata['time'];
-                    
-                    if (!isset($contagem[$alt])) {
-                        $contagem[$alt] = 0;
-                        $primeirosTempos[$alt] = $time;
-                    }
-                    $contagem[$alt]++;
-                    
-                    // Guarda o tempo do voto mais rápido para aquela alternativa
-                    if ($time < $primeirosTempos[$alt]) {
-                        $primeirosTempos[$alt] = $time;
-                    }
-                }
-                
-                // Encontra a maioria ou empates na maioria
-                $maxVotos = max($contagem);
-                $empatados = [];
-                foreach ($contagem as $alt => $qtd) {
-                    if ($qtd === $maxVotos) {
-                        $empatados[] = $alt;
-                    }
-                }
-                
-                if (count($empatados) === 1) {
-                    $votoId = $empatados[0]; // Maioria absoluta
-                } else {
-                    // Desempate pelo "Dedo Mais Rápido"
-                    $vencedorTempo = null;
-                    $melhorTempo = null;
-                    foreach ($empatados as $alt) {
-                        if ($melhorTempo === null || $primeirosTempos[$alt] < $melhorTempo) {
-                            $melhorTempo = $primeirosTempos[$alt];
-                            $vencedorTempo = $alt;
-                        }
-                    }
-                    $votoId = $vencedorTempo;
-                    echo "Sala $pin: Equipe $eid empatou internamente. Desempate por velocidade: Alt $votoId venceu.\n";
-                }
-            }
-
-            $acertou = ($votoId !== null && $votoId == $idCorreto);
-            
-            $textoVoto = "Não votou";
-            if ($votoId !== null) {
-                if ($votoId == 0) {
-                    $textoVoto = $questaoReal->resposta;
-                } else {
-                    $resp = $questaoReal->respostas->find($votoId);
-                    $textoVoto = $resp ? $resp->alternativa : "Erro";
-                }
-            }
-
-            $resEquipes[$eid] = [
-                'voto' => $textoVoto,
-                'acertou' => $acertou,
-                'votou' => ($votoId !== null)
-            ];
-
-            $equipeObj = \App\Models\EquipeMultiplayer::with('jogadores.user')->find($eid);
-
-            // Registra cada resposta individual no histórico global (/estatistica).
-            if (!empty($votosEquipe)) {
-                $agora = now();
-
-                foreach ($votosEquipe as $vdata) {
-                    $alternativaId = (int)($vdata['alt'] ?? -1);
-                    if ($alternativaId < 0) {
-                        continue;
-                    }
-
-                    $estatisticasRodada[] = [
-                        'questao_id' => $questaoReal->id,
-                        'resposta_id' => $alternativaId === 0 ? null : $alternativaId,
-                        'created_at' => $agora,
-                        'updated_at' => $agora,
-                    ];
-                }
-            }
-            
-            if ($votoId !== null) {
-                // Item 6: Atualiza estatísticas globais da Questão
-                if ($acertou) {
-                    $questaoReal->increment('acertos');
-                } else {
-                    $questaoReal->increment('erros');
-                }
-
-                // Item 7: Elo Progression System
-                if ($equipeObj) {
-                    foreach ($equipeObj->jogadores as $jogador) {
-                        // is_guest is tracked as a boolean or 1. If not guest, calculate XP.
-                        if ($jogador->user && empty($jogador->user->is_guest)) {
-                            $jogador->user->adicionarExperienciaBaseadoNaQuestao($questaoReal, $acertou);
-                        }
-                    }
-                }
-            }
-
-            // Score clássico da Partida (10 pontos por acerto)
-            if ($acertou && $equipeObj) {
-                $equipeObj->increment('pontuacao', 10);
-            }
-        }
-
-        // Grava o histórico só depois do XP, para que todas as equipes sejam avaliadas sobre a mesma base.
-        if (!empty($estatisticasRodada)) {
-            \App\Models\Estatistica::insert($estatisticasRodada);
-        }
-
-        $this->salas[$pin]['resultados'][$index] = [
-            'pergunta' => $questaoReal->pergunta,
-            'correta' => $respostaCorretaTexto,
-            'equipes' => $resEquipes
+        $resultados = $this->salas->get($pin, 'resultados', []);
+        $resultados[$index] = [
+            'pergunta' => $questao->pergunta,
+            'correta' => $questao->resposta,
+            'equipes' => $apuracao['equipes'],
         ];
+        $this->salas->set($pin, 'resultados', $resultados);
 
-        // Busca os scores atualizados do banco após os increments acima
-        $scoresAtuais = \App\Models\EquipeMultiplayer::where('partida_multiplayer_id', $pm->id)
-                        ->pluck('pontuacao', 'id')->toArray();
-
-        $this->broadcastToSala($pin, [
+        $this->salas->broadcast($pin, [
             'type' => 'fim_pergunta',
             'message' => $motivo,
-            'correta' => $respostaCorretaTexto,
-            'id_correto' => $idCorreto,
-            'scores' => $scoresAtuais
+            'correta' => $questao->resposta,
+            'id_correto' => ApuracaoService::ID_RESPOSTA_CORRETA,
+            'scores' => $apuracao['scores'],
         ]);
 
-        $this->salas[$pin]['status'] = 'waiting_next';
+        $this->salas->set($pin, 'status', 'waiting_next');
 
-        $this->loop->addTimer(8, function() use ($pin) {
-            $pm = \App\Models\PartidaMultiplayer::with('equipes')->where('pin', $pin)->first();
-            $questoes = json_decode($pm->questoes_json, true);
-            $totalOriginal = count($questoes);
-            
-            // Incrementa o index
-            $pm->increment('pergunta_atual_index');
-            $novoIndex = $pm->pergunta_atual_index;
-
-            // LÓGICA DE MORTE SÚBITA
-            if ($novoIndex >= count($questoes)) {
-                $maxScore = $pm->equipes->max('pontuacao');
-                $vencedores = $pm->equipes->where('pontuacao', $maxScore);
-                
-                if ($vencedores->count() > 1) {
-                    // Conta quantas rodadas de sudden death já tivemos
-                    $suddenDeathCount = collect($questoes)->where('modo', 'sudden_death')->count();
-
-                    if ($suddenDeathCount < 3) {
-                        // EMPATE! Adiciona pergunta extra
-                        echo "Sala $pin: Empate detectado ($maxScore pts). Ativando MORTE SÚBITA (Rodada " . ($suddenDeathCount + 1) . ")!\n";
-                        
-                        $jaUsadas = collect($questoes)->pluck('id')->all();
-                        $pExtra = \App\Models\Questao::with('respostas')
-                            ->whereNotIn('id', $jaUsadas)
-                            ->has('respostas')
-                            ->inRandomOrder()->first();
-
-                        if (!$pExtra) {
-                            echo "Sala $pin: Sem questões disponíveis para a Morte Súbita. Declarando Empate final!\n";
-                            $this->broadcastToSala($pin, [
-                                'type' => 'system',
-                                'message' => '⚖️ Não há mais perguntas para desempate. Fim de jogo com empate!'
-                            ]);
-                            $this->proximaPergunta($pin);
-                            return;
-                        }
-
-                        // Pega até 4 respostas erradas e adiciona a correta (ID 0)
-                        $opcoesExtra = $pExtra->respostas->shuffle()->take(4)->pluck('id')->toArray();
-                        $opcoesExtra[] = 0;
-                        shuffle($opcoesExtra);
-
-                        $novaQuestao = [
-                            'id' => $pExtra->id,
-                            'respAnt' => null,
-                            'opcoes' => $opcoesExtra,
-                            'modo' => 'sudden_death'
-                        ];
-                        
-                        $questoes[] = $novaQuestao;
-                        $pm->update(['questoes_json' => json_encode($questoes)]);
-                        
-                        $this->broadcastToSala($pin, [
-                            'type' => 'system',
-                            'message' => '🔥 EMPATE! Iniciando Morte Súbita ('.($suddenDeathCount + 1).'/3)...'
-                        ]);
-                    } else {
-                        echo "Sala $pin: Limite de Morte Súbita atingido. Declarando Empate final!\n";
-                        $this->broadcastToSala($pin, [
-                            'type' => 'system',
-                            'message' => '⚖️ Limite de desempates atingido. Fim de jogo com empate!'
-                        ]);
-                    }
-                }
-            }
-
-            $this->proximaPergunta($pin);
-        });
+        $this->loop->addTimer(PerguntaService::INTERVALO_ENTRE_PERGUNTAS, fn () => $this->avancarPergunta($pin));
     }
 
-    private function finalizarPartida($pin)
+    /** Passa para a próxima pergunta; se acabaram e há empate, ativa a morte súbita. */
+    private function avancarPergunta(string $pin): void
     {
-        $pm = \App\Models\PartidaMultiplayer::with('equipes')->where('pin', $pin)->first();
+        $pm = PartidaMultiplayer::with('equipes')->where('pin', $pin)->first();
+        $questoes = $this->perguntas->questoes($pm);
+
+        $pm->increment('pergunta_atual_index');
+
+        if ($pm->pergunta_atual_index >= count($questoes)) {
+            $maxima = $pm->equipes->max('pontuacao');
+
+            if ($pm->equipes->where('pontuacao', $maxima)->count() > 1) {
+                $this->resolverEmpate($pin, $pm, $questoes, $maxima);
+            }
+        }
+
+        $this->proximaPergunta($pin);
+    }
+
+    private function resolverEmpate(string $pin, PartidaMultiplayer $pm, array $questoes, $pontuacao): void
+    {
+        $rodadas = $this->perguntas->rodadasDeMorteSubita($questoes);
+
+        if ($rodadas >= PerguntaService::MAX_MORTE_SUBITA) {
+            echo "Sala $pin: Limite de Morte Súbita atingido. Declarando Empate final!\n";
+            $this->salas->broadcast($pin, [
+                'type' => 'system',
+                'message' => '⚖️ Limite de desempates atingido. Fim de jogo com empate!',
+            ]);
+            return;
+        }
+
+        $extra = $this->perguntas->novaQuestaoDeMorteSubita($questoes);
+        if (!$extra) {
+            echo "Sala $pin: Sem questões disponíveis para a Morte Súbita. Declarando Empate final!\n";
+            $this->salas->broadcast($pin, [
+                'type' => 'system',
+                'message' => '⚖️ Não há mais perguntas para desempate. Fim de jogo com empate!',
+            ]);
+            return;
+        }
+
+        echo "Sala $pin: Empate detectado ($pontuacao pts). Ativando MORTE SÚBITA (Rodada " . ($rodadas + 1) . ")!\n";
+        $questoes[] = $extra;
+        $pm->update(['questoes_json' => json_encode($questoes)]);
+
+        $this->salas->broadcast($pin, [
+            'type' => 'system',
+            'message' => '🔥 EMPATE! Iniciando Morte Súbita (' . ($rodadas + 1) . '/' . PerguntaService::MAX_MORTE_SUBITA . ')...',
+        ]);
+    }
+
+    private function finalizarPartida(string $pin): void
+    {
+        $pm = PartidaMultiplayer::with('equipes')->where('pin', $pin)->first();
         if (!$pm) return;
 
-        $scores = $pm->equipes->pluck('pontuacao', 'id')->toArray();
-        $maxScore = $pm->equipes->max('pontuacao');
-        $winners = $pm->equipes->where('pontuacao', $maxScore)->pluck('id')->toArray();
+        $maxima = $pm->equipes->max('pontuacao');
 
-        $this->broadcastToSala($pin, [
+        $this->salas->broadcast($pin, [
             'type' => 'finalizada',
             'message' => 'Fim de jogo!',
-            'resultados_finais' => $this->salas[$pin]['resultados'] ?? [],
-            'scores' => $scores,
-            'winners' => $winners
+            'resultados_finais' => $this->salas->get($pin, 'resultados', []),
+            'scores' => $pm->equipes->pluck('pontuacao', 'id')->toArray(),
+            'winners' => $pm->equipes->where('pontuacao', $maxima)->pluck('id')->toArray(),
         ]);
-        
+
         $pm->update(['status' => 'finished']);
     }
 
     public function onClose(ConnectionInterface $conn)
     {
-        $this->clients->detach($conn);
-        // Remove player from any sala they were in
-        foreach ($this->salas as $pin => $sala) {
-            if ($sala['conns']->contains($conn)) {
-                $userId = $sala['conns'][$conn];
-                $sala['conns']->detach($conn);
-                echo "Conn {$conn->resourceId} left Sala {$pin}\n";
-
-                // Só esquece a equipe do jogador se ele não tiver outra aba conectada na sala.
-                $outraAba = false;
-                foreach ($sala['conns'] as $outra) {
-                    if ($sala['conns'][$outra] === $userId) {
-                        $outraAba = true;
-                        break;
-                    }
-                }
-                if (!$outraAba) {
-                    unset($this->salas[$pin]['player_equipe'][$userId]);
-                }
-            }
-        }
+        $this->clients->offsetUnset($conn);
+        $this->salas->desconectar($conn);
         echo "Connection {$conn->resourceId} has disconnected\n";
     }
 
@@ -667,19 +426,5 @@ class WebSocketServer extends Command implements MessageComponentInterface
     {
         echo "An error has occurred: {$e->getMessage()}\n";
         $conn->close();
-    }
-
-    private function broadcastToSala($pin, $data, $except = null) {
-        if (!isset($this->salas[$pin])) {
-            echo "Aviso: Nenhuma conexão ativa na Sala $pin para broadcast.\n";
-            return;
-        }
-        $count = 0;
-        foreach ($this->salas[$pin]['conns'] as $client) {
-            if ($client === $except) continue;
-            $client->send(json_encode($data));
-            $count++;
-        }
-        echo "Broadcast Sala $pin: Enviado para $count clientes (Excluindo remetente: " . ($except ? 'Sim' : 'Não') . ").\n";
     }
 }
