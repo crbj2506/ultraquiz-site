@@ -179,6 +179,7 @@ class FluxoPartidaTest extends ServidorWebSocketTestCase
         config(['app.numero_questoes_multiplayer' => 2]);
         [$partida, , , $u1, $u2, $c1, $c2] = $this->salaComDoisJogadoresConectados();
         $this->criarQuestoesAprovadas(12);
+        $partida->update(['status' => 'finished']);
 
         $this->enviar($c1, ['action' => 'rematch_vote', 'pin' => 'ABCD']);
         $this->enviar($c2, ['action' => 'rematch_vote', 'pin' => 'ABCD']);
@@ -249,9 +250,49 @@ class FluxoPartidaTest extends ServidorWebSocketTestCase
         $this->assertSame($b->id, $this->lerPropriedade('salas')['ABCD']['player_equipe'][$u2->id]);
     }
 
+    public function test_voto_durante_o_intervalo_nao_apura_a_rodada_de_novo(): void
+    {
+        [$partida, $a, $b, $u1, $u2, $c1, $c2] = $this->salaComDoisJogadoresConectados(2);
+
+        $this->enviar($c1, ['action' => 'votar', 'pin' => 'ABCD', 'alternativa_id' => 0]);
+        $this->enviar($c2, ['action' => 'votar', 'pin' => 'ABCD', 'alternativa_id' => 0]);
+        $this->assertSame(10, (int) $a->fresh()->pontuacao);
+
+        // Intervalo entre perguntas: um voto atrasado não pode pontuar nem agendar outro avanço.
+        $this->enviar($c1, ['action' => 'votar', 'pin' => 'ABCD', 'alternativa_id' => 0]);
+
+        $this->assertSame(10, (int) $a->fresh()->pontuacao);
+        $this->assertCount(1, array_filter($this->loop->timers, fn ($t) => !$t['periodico']));
+    }
+
+    public function test_fim_da_pergunta_chamado_duas_vezes_apura_apenas_uma(): void
+    {
+        [$partida, $a, , , , $c1] = $this->salaComDoisJogadoresConectados(2);
+        $this->enviar($c1, ['action' => 'votar', 'pin' => 'ABCD', 'alternativa_id' => 0]);
+
+        $this->chamarPrivado('processarFimDaPergunta', 'ABCD');
+        $this->chamarPrivado('processarFimDaPergunta', 'ABCD');
+
+        $this->assertSame(10, (int) $a->fresh()->pontuacao);
+        $this->assertCount(1, $c1->recebidas ? array_filter($c1->recebidas, fn ($m) => $m['type'] === 'fim_pergunta') : []);
+    }
+
+    public function test_revanche_so_vale_com_a_partida_encerrada(): void
+    {
+        [$partida, $a, $b, $u1, $u2, $c1, $c2] = $this->salaComDoisJogadoresConectados(2);
+        $a->update(['pontuacao' => 10]);
+
+        $this->enviar($c1, ['action' => 'rematch_vote', 'pin' => 'ABCD']);
+        $this->enviar($c2, ['action' => 'rematch_vote', 'pin' => 'ABCD']);
+
+        $this->assertNull($c1->ultima('reset'));
+        $this->assertSame(10, (int) $a->fresh()->pontuacao);
+    }
+
     public function test_revanche_so_reinicia_quando_as_duas_equipes_votam(): void
     {
         [$partida, $a, $b, $u1, $u2, $c1, $c2] = $this->salaComDoisJogadoresConectados();
+        $partida->update(['status' => 'finished']);
         $a->update(['pontuacao' => 10]);
 
         $this->enviar($c1, ['action' => 'rematch_vote', 'pin' => 'ABCD', 'user_id' => $u1->id]);

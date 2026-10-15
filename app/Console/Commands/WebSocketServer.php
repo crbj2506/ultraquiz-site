@@ -165,6 +165,9 @@ class WebSocketServer extends Command implements MessageComponentInterface
 
     private function votar(string $pin, int $userId, $alternativaId): void
     {
+        // Votos só valem enquanto a rodada está aberta (não no intervalo entre perguntas).
+        if ($this->salas->get($pin, 'status') !== 'playing') return;
+
         $equipeId = $this->salas->equipeDoJogador($pin, $userId);
         if (!$equipeId) return;
 
@@ -207,6 +210,9 @@ class WebSocketServer extends Command implements MessageComponentInterface
     {
         $equipeId = $this->salas->equipeDoJogador($pin, $userId);
         if (!$equipeId) return;
+
+        // Revanche só depois do fim da partida; antes disso reiniciaria um jogo em andamento.
+        if (PartidaMultiplayer::where('pin', $pin)->value('status') !== 'finished') return;
 
         echo "Voto de revanche recebido: Sala $pin, Equipe $equipeId\n";
         $this->salas->registrarRevanche($pin, $equipeId);
@@ -310,6 +316,10 @@ class WebSocketServer extends Command implements MessageComponentInterface
 
     private function processarFimDaPergunta(string $pin, string $motivo = 'Tempo esgotado!'): void
     {
+        // Idempotente: só uma apuração por rodada, mesmo com timer e último voto chegando juntos.
+        if ($this->salas->get($pin, 'status') !== 'playing') return;
+        $this->salas->set($pin, 'status', 'waiting_next');
+
         $this->cancelarTimer($pin);
 
         $pm = PartidaMultiplayer::where('pin', $pin)->first();
@@ -339,8 +349,6 @@ class WebSocketServer extends Command implements MessageComponentInterface
             'id_correto' => ApuracaoService::ID_RESPOSTA_CORRETA,
             'scores' => $apuracao['scores'],
         ]);
-
-        $this->salas->set($pin, 'status', 'waiting_next');
 
         $this->loop->addTimer(PerguntaService::INTERVALO_ENTRE_PERGUNTAS, fn () => $this->avancarPergunta($pin));
     }

@@ -13,6 +13,7 @@ use App\Services\Lobby\EscolhaEquipeService;
 use App\Services\Lobby\InicioPartidaService;
 use App\Services\Lobby\LobbyException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class LobbyController extends Controller
 {
@@ -128,10 +129,13 @@ class LobbyController extends Controller
             ->whereIn('status', ['waiting', 'playing'])
             ->firstOrFail();
 
-        // Verifica se a equipe pertence a esta partida
-        $equipe = EquipeMultiplayer::where('partida_multiplayer_id', $partida->id)->findOrFail($request->equipe_id);
+        // Trava a sala: entradas simultâneas veem a mesma contagem de jogadores e não duplicam o jogador.
+        [, $mensagemBalanceamento] = DB::transaction(function () use ($partida, $request) {
+            PartidaMultiplayer::whereKey($partida->id)->lockForUpdate()->first();
+            $equipe = EquipeMultiplayer::where('partida_multiplayer_id', $partida->id)->findOrFail($request->equipe_id);
 
-        [, $mensagemBalanceamento] = $this->escolhaEquipe->escolher($partida, $equipe, Auth::id());
+            return $this->escolhaEquipe->escolher($partida->load('equipes.jogadores'), $equipe->load('jogadores'), Auth::id());
+        });
 
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json([
@@ -151,13 +155,18 @@ class LobbyController extends Controller
     {
         $partida = PartidaMultiplayer::where('pin', strtoupper($pin))->firstOrFail();
 
+        // Trava a sala: dois cliques simultâneos em "iniciar" não geram duas partidas.
         try {
-            $this->inicioPartida->validar($partida, Auth::id());
+            DB::transaction(function () use ($pin) {
+                $partida = PartidaMultiplayer::where('pin', strtoupper($pin))->lockForUpdate()->firstOrFail();
+                $partida->load('equipes');
+
+                $this->inicioPartida->validar($partida, Auth::id());
+                $this->inicioPartida->iniciar($partida);
+            });
         } catch (LobbyException $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
-
-        $this->inicioPartida->iniciar($partida);
 
         // Se for AJAX, retorna JSON 
         if (request()->wantsJson() || request()->ajax()) {

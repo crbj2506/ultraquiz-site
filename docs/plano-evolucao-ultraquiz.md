@@ -154,7 +154,9 @@ Objetivos:
 - facilitar manutenção do fluxo de perguntas e resultados
 - melhorar previsibilidade em partidas com vários jogadores
 
-### Etapa 4 — Validar concorrência e consistência
+### Etapa 4 — Validar concorrência e consistência ✅
+
+Concluída. Análise: o servidor WebSocket é single-thread (sem corrida entre mensagens), mas havia falhas de estado; o HTTP roda em paralelo e o banco já tinha índices únicos em `pin` e `(partida, usuário)`. Correções: (1) voto no intervalo entre perguntas é ignorado e `processarFimDaPergunta` é idempotente (antes pontuava em dobro e pulava pergunta); (2) revanche só com a partida encerrada (antes reiniciava jogo em andamento); (3) início da partida e escolha de equipe em transação com `lockForUpdate` na sala; (4) criação de sala refaz o PIN se o índice único recusar duplicado. Pendência conhecida e de baixo risco: o XP lê e grava o campo `experiencia` do usuário sem trava (dois jogos simultâneos do mesmo usuário podem perder um incremento). 88 testes, 277 asserções.
 
 Ações:
 - verificar uso de IDs de sala e equipe em operações simultâneas

@@ -73,6 +73,36 @@ class CriarSalaTest extends TestCase
         $this->assertSame(1, PartidaMultiplayer::where('pin', 'AAAA')->count());
     }
 
+    public function test_pin_sorteado_em_corrida_e_refeito_quando_o_banco_recusa_duplicado(): void
+    {
+        $usuario = $this->criarUsuario();
+        $sequencia = ['AAAA', 'BBBB'];
+        \Illuminate\Support\Str::createRandomStringsUsing(function ($tamanho) use (&$sequencia) {
+            return $tamanho === 4 && $sequencia ? array_shift($sequencia) : str_repeat('x', $tamanho);
+        });
+
+        // Simula outra requisição criando AAAA entre a checagem e o insert.
+        $inserido = false;
+        PartidaMultiplayer::creating(function ($p) use (&$inserido, $usuario) {
+            if (!$inserido && $p->pin === 'AAAA') {
+                $inserido = true;
+                \Illuminate\Support\Facades\DB::table('partida_multiplayers')->insert([
+                    'pin' => 'AAAA', 'status' => 'waiting', 'user_id' => $usuario->id,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+        });
+
+        try {
+            $partida = app(\App\Services\Lobby\CriacaoSalaService::class)->criar($usuario->id);
+        } finally {
+            \Illuminate\Support\Str::createRandomStringsNormally();
+        }
+
+        $this->assertSame('BBBB', $partida->pin);
+        $this->assertSame(2, PartidaMultiplayer::count());
+    }
+
     public function test_index_sem_intencao_apenas_exibe_o_lobby(): void
     {
         $this->actingAs($this->criarUsuario())
