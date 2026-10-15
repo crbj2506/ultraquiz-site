@@ -135,7 +135,9 @@ class LobbyController extends Controller
     {
         if (!Auth::check()) return response()->json(['error' => 'Not Auth'], 401);
 
-        $partida = PartidaMultiplayer::where('pin', strtoupper($pin))->firstOrFail();
+        $partida = PartidaMultiplayer::where('pin', strtoupper($pin))
+            ->whereIn('status', ['waiting', 'playing'])
+            ->firstOrFail();
         $equipe_id = $request->equipe_id;
 
         // Verifica se a equipe pertence a esta partida
@@ -194,6 +196,11 @@ class LobbyController extends Controller
         // Apenas o criador pode iniciar
         if (Auth::id() !== $partida->user_id) {
             return redirect()->back()->with('error', 'Apenas o anfitrião pode iniciar a partida.');
+        }
+
+        // Só uma sala em espera pode ser iniciada (evita reiniciar partida em andamento ou encerrada)
+        if ($partida->status !== 'waiting') {
+            return redirect()->back()->with('error', 'Esta partida não pode ser iniciada.');
         }
 
         // Validação: Pelo menos 1 jogador em CADA equipe principal

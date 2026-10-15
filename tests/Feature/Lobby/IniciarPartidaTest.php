@@ -98,6 +98,27 @@ class IniciarPartidaTest extends TestCase
         $this->assertLessThanOrEqual(4, count(json_decode($partida->fresh()->questoes_json, true)));
     }
 
+    public function test_nao_reinicia_partida_em_andamento_nem_encerrada(): void
+    {
+        foreach (['playing', 'finished'] as $i => $status) {
+            $anfitriao = $this->criarUsuario();
+            $pin = 'ST' . $i . 'X';
+            $partida = $this->criarSala($anfitriao, $status, $pin);
+            $this->colocarNaEquipe($partida, $this->equipe($partida, 'Equipe A'), $anfitriao);
+            $this->colocarNaEquipe($partida, $this->equipe($partida, 'Equipe B'));
+            $this->equipe($partida, 'Equipe A')->update(['pontuacao' => 20]);
+
+            $this->actingAs($anfitriao)
+                ->from(route('lobby.sala', ['pin' => $pin]))
+                ->post(route('lobby.iniciar', ['pin' => $pin]))
+                ->assertSessionHas('error');
+
+            $this->assertSame($status, $partida->fresh()->status);
+            $this->assertNull($partida->fresh()->questoes_json);
+            $this->assertSame(20, (int) $this->equipe($partida, 'Equipe A')->pontuacao);
+        }
+    }
+
     public function test_jogar_exige_partida_em_andamento_e_informa_a_equipe_do_jogador(): void
     {
         [$anfitriao, $partida] = $this->prepararSalaCompleta();

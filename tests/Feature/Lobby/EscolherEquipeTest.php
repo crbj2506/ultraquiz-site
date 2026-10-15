@@ -99,6 +99,22 @@ class EscolherEquipeTest extends TestCase
         ]);
     }
 
+    public function test_nao_permite_entrar_em_equipe_de_partida_encerrada(): void
+    {
+        $partida = $this->criarSala(null, 'finished', 'FIM1');
+
+        $this->escolher($this->criarUsuario(), $partida, $this->equipe($partida, 'Equipe A'))->assertNotFound();
+        $this->assertSame(0, JogadorPartida::count());
+    }
+
+    public function test_late_joiner_pode_escolher_equipe_com_partida_em_andamento(): void
+    {
+        $partida = $this->criarSala(null, 'playing', 'PLAY');
+
+        $this->escolher($this->criarUsuario(), $partida, $this->equipe($partida, 'Equipe A'))->assertOk();
+        $this->assertSame(1, JogadorPartida::count());
+    }
+
     public function test_equipe_de_outra_partida_retorna_404(): void
     {
         $partida = $this->criarSala(null, 'waiting', 'AAAA');
