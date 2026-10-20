@@ -25,7 +25,7 @@ class WebSocketServer extends Command implements MessageComponentInterface
     private const ACOES = ['join', 'votar', 'start', 'rematch_vote'];
     private const MAX_BYTES_MENSAGEM = 2048;
 
-    protected $signature = 'websocket:serve {--port=8090}';
+    protected $signature = 'websocket:serve {--host=0.0.0.0} {--port=8090}';
     protected $description = 'Start the WebSocket server for UltraQuiz Multiplayer';
 
     protected $clients;
@@ -45,16 +45,17 @@ class WebSocketServer extends Command implements MessageComponentInterface
 
     public function handle()
     {
+        $host = $this->option('host');
         $port = $this->option('port');
 
         $server = IoServer::factory(
             new HttpServer(new WsServer($this)),
             $port,
-            '0.0.0.0'
+            $host
         );
 
-        $this->info("WebSocket Server started on port {$port} explicitly bound to all interfaces (0.0.0.0)");
-        Log::info('servidor_iniciado', ['porta' => $port]);
+        $this->info("WebSocket Server started on {$host}:{$port}");
+        Log::info('servidor_iniciado', ['host' => $host, 'porta' => $port]);
         $this->loop = $server->loop;
         $server->run();
     }

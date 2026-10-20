@@ -77,6 +77,14 @@ php artisan websocket:serve --port=8090
 
 Acesse na sua rede: `http://localhost:8080` (ou usando o IP local do PC, como `http://192.168.0.x:8080`).
 
+## ☁️ Implantação no Google Cloud
+
+Para o roteiro de produção na VM Debian 13 do Compute Engine — incluindo
+HTTPS/Apache, MariaDB local, OAuth Google e o WebSocket gerenciado pelo
+Supervisor — consulte
+[docs/deploy-google-cloud.md](docs/deploy-google-cloud.md). O guia explicita
+o que já foi confirmado e os detalhes que ainda precisam ser verificados na VM.
+
 ---
 
 ## 🎮 Modos de Jogo Disponíveis

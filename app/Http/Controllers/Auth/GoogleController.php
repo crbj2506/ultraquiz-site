@@ -8,19 +8,20 @@ use Laravel\Socialite\Facades\Socialite;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class GoogleController extends Controller
 {
     public function redirectToGoogle()
     {
-        return Socialite::driver('google')->setHttpClient(new \GuzzleHttp\Client(['verify' => false]))->redirect();
+        return Socialite::driver('google')->redirect();
     }
 
     public function handleGoogleCallback()
     {
         try {
-            $googleUser = Socialite::driver('google')->setHttpClient(new \GuzzleHttp\Client(['verify' => false]))->user();
+            $googleUser = Socialite::driver('google')->user();
 
             $user = User::withTrashed()
                         ->where('email', $googleUser->email)
@@ -63,7 +64,11 @@ class GoogleController extends Controller
             return redirect()->intended('/partida');
             
         } catch (\Exception $e) {
-            dd($e->getMessage());
+            Log::error('Falha na autenticação com o Google.', ['exception' => $e]);
+
+            return redirect()->route('login')->withErrors([
+                'email' => 'Não foi possível concluir o login pelo Google. Tente novamente.',
+            ]);
         }
     }
 }
